@@ -29,7 +29,7 @@ services:
       TZ: Asia/Bangkok
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -67,7 +67,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: trimurti-backend
     restart: always
@@ -106,7 +106,7 @@ services:
     # One-shot container: runs migrations then exits. `deploy.sh` invokes it
     # on every deploy via `docker compose run --rm migrate`.
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: trimurti-migrate
     entrypoint: ["/app/migrate", "up"]
@@ -120,7 +120,7 @@ services:
 
   seed:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: trimurti-seed
     entrypoint: ["/app/seed"]
@@ -136,7 +136,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: trimurti-frontend
     restart: always
@@ -160,7 +160,7 @@ services:
       DOMAIN: ${DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
