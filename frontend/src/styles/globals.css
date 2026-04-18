@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Design tokens ported from design/ERP.html (lines 10–973).
+ * Light/Dark themes switch on [data-theme="dark"] on <html>.
+ * SAP/Bloomberg-dense palette: high contrast, tight neutrals, one strong accent.
+ */
+
+@theme {
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f2f5;
+  --color-border: #e3e6eb;
+  --color-border-strong: #c7ccd4;
+  --color-fg: #0f172a;
+  --color-fg-muted: #475569;
+  --color-fg-subtle: #64748b;
+
+  --color-accent: #0b4f6c;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #083f57;
+
+  --color-ok: #0e7c4a;
+  --color-ok-bg: #e2f3ea;
+  --color-warn: #a6590c;
+  --color-warn-bg: #fdf0dc;
+  --color-bad: #b91c1c;
+  --color-bad-bg: #fde8e8;
+  --color-info: #1d4ed8;
+  --color-info-bg: #e0e8fb;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0a0e14;
+  --color-surface: #10151d;
+  --color-surface-2: #161d27;
+  --color-border: #232c38;
+  --color-border-strong: #334155;
+  --color-fg: #e5e7eb;
+  --color-fg-muted: #9ca3af;
+  --color-fg-subtle: #6b7280;
+
+  --color-accent: #38bdf8;
+  --color-accent-fg: #0a0e14;
+  --color-accent-hover: #7dd3fc;
+
+  --color-ok-bg: #0c2a1f;
+  --color-warn-bg: #2a1f0c;
+  --color-bad-bg: #2a0f0f;
+  --color-info-bg: #0f1a2e;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Dense table tuning for data-heavy modules. */
+table {
+  font-variant-numeric: tabular-nums;
+}

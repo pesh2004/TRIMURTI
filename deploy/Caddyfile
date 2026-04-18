@@ -1,0 +1,55 @@
+# Caddy handles TLS termination, HTTP→HTTPS redirect, gzip/zstd, and routes
+# /api/* → backend container, everything else → frontend container.
+# TLS certificates are issued automatically via Let's Encrypt and renewed.
+#
+# If DOMAIN env var is unset, Caddy falls back to serving on :80 (HTTP only —
+# fine for a throwaway IP-only demo, but prefer a real domain).
+
+{
+    email {$ACME_EMAIL:admin@trimurti.local}
+    # Uncomment to use Let's Encrypt staging while testing (rate-limited less):
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$DOMAIN::80} {
+    encode gzip zstd
+
+    # Tight security headers. HSTS preload candidate after 1 year.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # Remove Caddy fingerprinting
+        -Server
+    }
+
+    # Health probes (for monitoring) bypass the SPA proxy
+    handle /healthz {
+        reverse_proxy backend:8080
+    }
+    handle /readyz {
+        reverse_proxy backend:8080
+    }
+
+    # API → Go backend
+    handle /api/* {
+        reverse_proxy backend:8080 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Everything else → frontend (nginx serving Vite static build)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Access log (stdout — captured by docker logging driver)
+    log {
+        output stdout
+        format json
+    }
+}

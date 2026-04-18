@@ -1,0 +1,47 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'cd /srv/trimurti && ./deploy/deploy.sh'
+
+      - name: Smoke test
+        run: |
+          BASE="${{ secrets.DEPLOY_BASE_URL }}"
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$BASE/healthz" > /dev/null; then
+              echo "healthz OK"
+              exit 0
+            fi
+            echo "attempt $i failed, retrying..."
+            sleep 3
+          done
+          echo "healthz failed after 5 attempts" >&2
+          exit 1

@@ -1,0 +1,55 @@
+# Local dev stack. NOT for production.
+# Production uses RDS Multi-AZ + ElastiCache (AWS) or managed equivalents on DO.
+
+name: trimurti
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: trimurti-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trimurti
+      POSTGRES_PASSWORD: trimurti_dev_only
+      POSTGRES_DB: trimurti
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF-8"
+      TZ: Asia/Bangkok
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trimurti -d trimurti"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: trimurti-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: trimurti-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+volumes:
+  postgres_data:
+    name: trimurti_postgres_data
+  redis_data:
+    name: trimurti_redis_data

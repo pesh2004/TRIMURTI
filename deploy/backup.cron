@@ -1,0 +1,11 @@
+# Install with:
+#   sudo cp deploy/backup.cron /etc/cron.d/trimurti-backup
+#   sudo chmod 644 /etc/cron.d/trimurti-backup
+#
+# Runs nightly at 02:05 Bangkok time. Writes stdout + stderr to /var/log/trimurti-backup.log.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TZ=Asia/Bangkok
+
+5 2 * * * trimurti cd /srv/trimurti && /srv/trimurti/deploy/backup.sh >> /var/log/trimurti-backup.log 2>&1

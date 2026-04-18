@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(mkdir -p /tmp/design_extract)",
+      "Read(//tmp/**)",
+      "Bash(gunzip -c \"/Users/peshz/.claude/projects/-Users-peshz-Desktop-ERP-TRIMURTI/ddc25142-cb12-4148-b010-317383766d87/tool-results/webfetch-1776527900626-o0oq7f.bin\")",
+      "Bash(tar -tf extracted.tar)",
+      "Read(//private/tmp/design_extract/**)",
+      "Bash(tar -xf extracted.tar)",
+      "Bash(grep -n \"^<style>$\\\\|^</style>$\\\\|^<script>$\\\\|^</script>$\\\\|^<script type=\\\\\"text/babel\\\\\"\" /tmp/design_extract/erp/project/ERP.html)",
+      "Bash(cp /tmp/design_extract/erp/project/ERP.html /Users/peshz/Desktop/ERP/TRIMURTI/ERP.html)",
+      "Bash(cp /tmp/design_extract/erp/project/CLAUDE.md /Users/peshz/Desktop/ERP/TRIMURTI/CLAUDE.md)",
+      "Bash(cp /tmp/design_extract/erp/project/SPEC.md /Users/peshz/Desktop/ERP/TRIMURTI/SPEC.md)",
+      "Bash(shasum /tmp/design_extract/erp/project/ERP.html /Users/peshz/Desktop/ERP/TRIMURTI/ERP.html)",
+      "Bash(go version *)",
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "Bash(git --version)",
+      "Bash(git mv *)",
+      "Bash(git -C /Users/peshz/Desktop/ERP/TRIMURTI status)",
+      "Bash(go mod *)",
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(go test *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(chmod +x /Users/peshz/Desktop/ERP/TRIMURTI/deploy/*.sh)",
+      "Bash(bash -n /Users/peshz/Desktop/ERP/TRIMURTI/deploy/bootstrap.sh)",
+      "Bash(bash -n /Users/peshz/Desktop/ERP/TRIMURTI/deploy/deploy.sh)",
+      "Bash(bash -n /Users/peshz/Desktop/ERP/TRIMURTI/deploy/backup.sh)",
+      "Bash(git -C /Users/peshz/Desktop/ERP/TRIMURTI status --short)",
+      "Bash(git -C /Users/peshz/Desktop/ERP/TRIMURTI remote -v)",
+      "Bash(git -C /Users/peshz/Desktop/ERP/TRIMURTI branch --show-current)",
+      "Bash(git -C /Users/peshz/Desktop/ERP/TRIMURTI log --oneline -5)",
+      "Bash(git add *)"
+    ]
+  }
+}

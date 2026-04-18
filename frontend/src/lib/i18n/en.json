@@ -1,0 +1,42 @@
+{
+  "app": {
+    "name": "TRIMURTI ERP",
+    "loading": "Loading…",
+    "error": "Something went wrong"
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalid": "Invalid email or password",
+    "locked": "Account temporarily locked. Try again in 15 minutes."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "search": "Search…",
+    "toggleTheme": "Toggle theme",
+    "toggleLang": "Toggle language"
+  },
+  "groups": {
+    "exec": "Executive",
+    "workspace": "Workspace",
+    "sales": "Sales",
+    "crm": "CRM",
+    "proj": "Projects",
+    "ops": "Site",
+    "docs": "Documents",
+    "proc": "Procurement",
+    "inv": "Inventory",
+    "eq": "Equipment",
+    "sub": "Subcontractor",
+    "hr": "HR",
+    "fin": "Finance",
+    "risk": "Risk",
+    "gov": "Governance",
+    "bi": "BI / Reports",
+    "system": "System"
+  }
+}

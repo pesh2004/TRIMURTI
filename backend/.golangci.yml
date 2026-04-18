@@ -1,0 +1,34 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - misspell
+    - bodyclose
+  settings:
+    gosec:
+      excludes:
+        - G404 # math/rand is fine for non-crypto uses (seeded elsewhere)
+    staticcheck:
+      checks: ['all', '-ST1000', '-ST1020', '-ST1021', '-ST1022']
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck, gosec]
+
+issues:
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
