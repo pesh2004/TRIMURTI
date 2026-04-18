@@ -91,8 +91,10 @@ LoginGraceTime 30
 EOF
 # Validate then try every reasonable way to pick up the new drop-in.
 # Ubuntu 24.04 socket-activates ssh so the service can be inactive — we must
-# not fail the whole bootstrap just because reload requires a running daemon.
-sshd -t
+# not fail the whole bootstrap just because reload needs a running daemon or
+# because /run/sshd (the privilege-separation dir) hasn't been materialised yet.
+mkdir -p /run/sshd
+sshd -t 2>&1 || echo "WARN: sshd -t reported an issue — review /etc/ssh/sshd_config.d/99-trimurti.conf before logging out"
 systemctl reload-or-restart ssh 2>/dev/null \
   || systemctl reload-or-restart sshd 2>/dev/null \
   || systemctl restart ssh.socket 2>/dev/null \
