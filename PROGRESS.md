@@ -7,15 +7,17 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ---
 
-## Phase 0 — Foundation (no module ID)
+## Phase 0 — Foundation (no module ID) ✅
 
-- [~] Repo scaffold + root docs (README, PROGRESS, SECURITY, CLAUDE, .gitignore, .editorconfig, .env.example, Makefile)
-- [ ] `docker-compose.yml` — postgres 17 + redis 7 + mailhog
-- [ ] Backend skeleton — Go module, Echo, pgx, sqlc, migrations framework, health endpoint, config loader
-- [ ] Auth + RBAC + Audit — argon2id password, Redis session, login/logout/me endpoints, permission middleware, audit log writer, seed script
-- [ ] Frontend skeleton — Vite + React + TS + TanStack + Tailwind v4 + shadcn/ui, login page, app layout with sidebar/topbar ported from prototype
-- [ ] CI — GitHub Actions (backend, frontend, security) + Dependabot
-- [ ] First green `main` — E2E smoke test in README passes
+- [x] Repo scaffold + root docs (README, PROGRESS, SECURITY, CLAUDE, .gitignore, .editorconfig, .env.example, Makefile)
+- [x] `docker-compose.yml` — postgres 17 + redis 7 + mailhog
+- [x] Backend skeleton — Go module, Echo, pgx, sqlc, migrations framework, health endpoint, config loader
+- [x] Auth + RBAC + Audit — argon2id password, Redis session, login/logout/me endpoints, permission middleware, audit log writer, seed script
+- [x] Frontend skeleton — Vite + React + TS + TanStack + Tailwind v4 + shadcn/ui, login page, app layout with sidebar/topbar ported from prototype
+- [x] CI — GitHub Actions (backend, frontend, security, deploy) + Dependabot
+- [x] First green `main` — E2E smoke test in README passes
+- [x] Production deploy — live at https://168.144.32.187.sslip.io (DO droplet, Caddy auto-HTTPS)
+- [x] Auto-deploy CI/CD — `.github/workflows/deploy.yml` with SSH deploy key
 
 ## Phase 1 — Core workspace (6 modules)
 
