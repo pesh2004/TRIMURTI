@@ -35,7 +35,10 @@ echo "==> [3/5] Starting postgres + redis (if not running)"
 docker compose "${COMPOSE_ARGS[@]}" up -d postgres redis
 
 echo "==> [4/5] Running migrations"
-docker compose "${COMPOSE_ARGS[@]}" --profile tools run --rm migrate
+# --build: tools profile is excluded from the step-2 `compose build`, so the
+# migrate image stays cached between deploys. Force a rebuild every run so
+# a new migration file actually gets picked up.
+docker compose "${COMPOSE_ARGS[@]}" --profile tools run --rm --build migrate
 
 echo "==> [5/5] Rolling backend + frontend + caddy"
 docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans backend frontend caddy
