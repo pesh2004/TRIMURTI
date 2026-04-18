@@ -89,7 +89,14 @@ ClientAliveCountMax 2
 MaxAuthTries 3
 LoginGraceTime 30
 EOF
-systemctl reload ssh || systemctl reload sshd
+# Validate then try every reasonable way to pick up the new drop-in.
+# Ubuntu 24.04 socket-activates ssh so the service can be inactive — we must
+# not fail the whole bootstrap just because reload requires a running daemon.
+sshd -t
+systemctl reload-or-restart ssh 2>/dev/null \
+  || systemctl reload-or-restart sshd 2>/dev/null \
+  || systemctl restart ssh.socket 2>/dev/null \
+  || true
 
 # ---- fail2ban ----------------------------------------------------------
 cat > /etc/fail2ban/jail.d/sshd.conf <<'EOF'
