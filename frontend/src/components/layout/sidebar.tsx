@@ -1,132 +1,149 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from '@tanstack/react-router'
-import { LayoutDashboard, Settings as SettingsIcon, Search } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Icons } from '@/components/hr/icons'
 import { cn } from '@/lib/cn'
-import { Input } from '@/components/ui/input'
+import { hrApi } from '@/lib/api/hr'
+import { useAuth } from '@/lib/auth'
 
-/** Module registry. Phase 0 only wires dashboard + settings; the rest surface as
- *  grouped placeholders so the 17-group shell from the prototype is immediately
- *  visible. Each Phase 1+ module replaces its entry with a live route. */
-type ModuleEntry = {
+type Item = {
   id: string
   to?: string
-  labelKey: string
-  defaultLabel: string
-  groupKey: string
+  th: string
+  en: string
+  icon: ReactNode
+  count?: number
 }
-
-const modules: ModuleEntry[] = [
-  { id: 'dashboard', to: '/', labelKey: 'nav.dashboard', defaultLabel: 'Dashboard', groupKey: 'workspace' },
-  { id: 'settings', to: '/settings', labelKey: 'nav.settings', defaultLabel: 'Settings', groupKey: 'system' },
-]
-
-const groupOrder = [
-  'workspace',
-  'exec',
-  'sales',
-  'crm',
-  'proj',
-  'ops',
-  'docs',
-  'proc',
-  'inv',
-  'eq',
-  'sub',
-  'hr',
-  'fin',
-  'risk',
-  'gov',
-  'bi',
-  'system',
-] as const
+type Group = { id: string; th: string; en: string; items: Item[] }
 
 export function Sidebar() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
+  const lang = i18n.language as 'th' | 'en'
 
-  const grouped = useMemo(() => {
+  // Live count for HR → Employees pill.
+  const empCountQ = useQuery({
+    queryKey: ['hr', 'employees', { limit: 1, offset: 0 }],
+    queryFn: () => hrApi.listEmployees({ limit: 1, offset: 0 }),
+    staleTime: 30_000,
+  })
+  const empCount = empCountQ.data?.total
+
+  const groups: Group[] = useMemo(
+    () => [
+      {
+        id: 'workspace',
+        th: 'เวิร์กสเปซ',
+        en: 'Workspace',
+        items: [
+          { id: 'dashboard', to: '/', th: 'แดชบอร์ด', en: 'Dashboard', icon: Icons.building(14) },
+        ],
+      },
+      {
+        id: 'hr',
+        th: 'ทรัพยากรบุคคล',
+        en: 'Human Resources',
+        items: [
+          {
+            id: 'hr_employees',
+            to: '/hr-employees',
+            th: 'พนักงาน',
+            en: 'Employees',
+            icon: Icons.users(14),
+            count: empCount,
+          },
+        ],
+      },
+      {
+        id: 'system',
+        th: 'ระบบ',
+        en: 'System',
+        items: [
+          { id: 'settings', to: '/settings', th: 'ตั้งค่า', en: 'Settings', icon: Icons.building(14) },
+        ],
+      },
+    ],
+    [empCount],
+  )
+
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const byGroup = new Map<string, ModuleEntry[]>()
-    for (const m of modules) {
-      if (q && !m.defaultLabel.toLowerCase().includes(q) && !m.id.includes(q)) continue
-      const arr = byGroup.get(m.groupKey) ?? []
-      arr.push(m)
-      byGroup.set(m.groupKey, arr)
-    }
-    return groupOrder
-      .map((g) => ({ key: g, entries: byGroup.get(g) ?? [] }))
-      .filter((g) => g.entries.length > 0)
-  }, [query])
+    if (!q) return groups
+    return groups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter(
+          (it) => it.th.toLowerCase().includes(q) || it.en.toLowerCase().includes(q) || it.id.includes(q),
+        ),
+      }))
+      .filter((g) => g.items.length > 0)
+  }, [groups, query])
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
-      <div className="flex h-14 items-center gap-2 border-b border-[color:var(--color-border)] px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-[color:var(--color-accent)] font-bold text-[color:var(--color-accent-fg)]">
-          T
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="logo-mark">T</div>
+        <div className="logo-text">
+          TRIMURTI
+          <small>Construction ERP</small>
         </div>
-        <span className="text-sm font-semibold">{t('app.name')}</span>
       </div>
 
-      <div className="border-b border-[color:var(--color-border)] p-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--color-fg-subtle)]" />
-          <Input
+      <div style={{ padding: '10px 10px 0' }}>
+        <div className="search-lg" style={{ height: 28 }}>
+          {Icons.search(12)}
+          <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('nav.search')}
-            className="pl-8"
+            className="search-in"
+            style={{ fontSize: 12 }}
           />
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2 text-sm">
-        {grouped.map((g) => (
-          <div key={g.key} className="mb-3">
-            <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--color-fg-subtle)]">
-              {t(`groups.${g.key}`)}
-            </div>
-            <ul>
-              {g.entries.map((m) => {
-                const active = m.to && (m.to === '/' ? pathname === '/' : pathname.startsWith(m.to))
-                return (
-                  <li key={m.id}>
-                    {m.to ? (
-                      <Link
-                        to={m.to}
-                        className={cn(
-                          'flex items-center gap-2 rounded px-2 py-1.5 text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-fg)]',
-                          active && 'bg-[color:var(--color-surface-2)] text-[color:var(--color-fg)]',
-                        )}
-                      >
-                        <ModuleIcon id={m.id} />
-                        <span>{t(m.labelKey, m.defaultLabel)}</span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center gap-2 rounded px-2 py-1.5 text-[color:var(--color-fg-subtle)]">
-                        <ModuleIcon id={m.id} />
-                        <span>{t(m.labelKey, m.defaultLabel)}</span>
-                      </span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+      <nav className="sidebar-nav">
+        {filtered.map((g) => (
+          <div key={g.id}>
+            <div className="nav-section">{lang === 'th' ? g.th : g.en}</div>
+            {g.items.map((it) => {
+              const active =
+                it.to && (it.to === '/' ? pathname === '/' : pathname.startsWith(it.to))
+              const content = (
+                <>
+                  <span style={{ color: 'var(--text-on-dark-muted)' }}>{it.icon}</span>
+                  <span>{lang === 'th' ? it.th : it.en}</span>
+                  {it.count != null && <span className="nav-count">{it.count}</span>}
+                </>
+              )
+              return it.to ? (
+                <Link key={it.id} to={it.to} className={cn('nav-item', active && 'active')}>
+                  {content}
+                </Link>
+              ) : (
+                <span key={it.id} className="nav-item" style={{ cursor: 'default', opacity: 0.6 }}>
+                  {content}
+                </span>
+              )
+            })}
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-[color:var(--color-border)] px-4 py-2 text-[10px] text-[color:var(--color-fg-subtle)]">
-        {modules.length} modules loaded
+      <div className="sidebar-footer">
+        <div className="avatar-me">
+          {(user?.display_name ?? 'U').slice(0, 2).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: '#fff', fontSize: 12, fontWeight: 500 }} className="truncate">
+            {user?.display_name ?? '—'}
+          </div>
+          <div style={{ fontSize: 10 }}>{user?.roles[0] ?? ''}</div>
+        </div>
       </div>
     </aside>
   )
-}
-
-function ModuleIcon({ id }: { id: string }) {
-  const cls = 'h-4 w-4'
-  if (id === 'dashboard') return <LayoutDashboard className={cls} />
-  if (id === 'settings') return <SettingsIcon className={cls} />
-  return <div className={cn(cls, 'rounded-sm bg-[color:var(--color-border-strong)]')} />
 }

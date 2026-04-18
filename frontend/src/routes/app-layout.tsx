@@ -1,9 +1,9 @@
 import { Outlet, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
-import { useTranslation } from 'react-i18next'
 
 export function AppLayout() {
   const { user, loading } = useAuth()
@@ -16,7 +16,7 @@ export function AppLayout() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-[color:var(--color-fg-muted)]">
+      <div className="empty-sm t-muted" style={{ marginTop: '40vh' }}>
         {t('app.loading')}
       </div>
     )
@@ -24,14 +24,12 @@ export function AppLayout() {
   if (!user) return null
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="app">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
-        <main className="flex-1 overflow-auto bg-[color:var(--color-bg)] p-6">
-          <Outlet />
-        </main>
-      </div>
+      <Topbar />
+      <main className="main">
+        <Outlet />
+      </main>
     </div>
   )
 }

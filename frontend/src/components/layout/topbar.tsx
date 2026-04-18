@@ -1,7 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { Moon, Sun, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
+import { useLocation } from '@tanstack/react-router'
+import { Icons } from '@/components/hr/icons'
 import { useAuth } from '@/lib/auth'
 import { applyTheme, initialTheme, type Theme } from '@/lib/theme'
 import { setLanguage, type Lang } from '@/lib/i18n'
@@ -9,35 +9,62 @@ import { setLanguage, type Lang } from '@/lib/i18n'
 export function Topbar() {
   const { t, i18n } = useTranslation()
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
+  const lang = i18n.language as Lang
   const [theme, setTheme] = useState<Theme>(initialTheme())
 
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme((p) => (p === 'dark' ? 'light' : 'dark'))
-  const toggleLang = () => setLanguage((i18n.language as Lang) === 'th' ? 'en' : 'th')
+  const crumbs = pathname.startsWith('/hr-employees')
+    ? [t('hr.title'), t('hr.list')]
+    : pathname.startsWith('/settings')
+      ? [t('nav.settings')]
+      : [t('nav.dashboard')]
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4">
-      <div className="flex items-center gap-2 text-sm text-[color:var(--color-fg-muted)]">
-        {user?.roles.length ? (
-          <span className="rounded bg-[color:var(--color-surface-2)] px-2 py-0.5 text-xs font-medium uppercase tracking-wide">
-            {user.roles[0]}
+    <header className="topbar">
+      <div className="crumbs">
+        <span>{Icons.building(13)}</span>
+        <span>TRIMURTI</span>
+        {crumbs.slice(0, -1).map((c, i) => (
+          <span key={i} style={{ display: 'contents' }}>
+            <span className="sep">/</span>
+            <span>{c}</span>
           </span>
-        ) : null}
-        <span className="font-medium text-[color:var(--color-fg)]">{user?.display_name}</span>
+        ))}
+        <span className="sep">/</span>
+        <span className="cur">{crumbs[crumbs.length - 1]}</span>
       </div>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={toggleLang} aria-label={t('nav.toggleLang')}>
-          {i18n.language === 'th' ? 'TH' : 'EN'}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={t('nav.toggleTheme')}>
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => void logout()} aria-label={t('auth.logout')}>
-          <LogOut className="h-4 w-4" />
-        </Button>
+      <div className="topbar-actions">
+        <div className="role-switch" title={user?.roles.join(', ')}>
+          <span className="role-dot" />
+          <span style={{ fontWeight: 500 }}>{user?.roles[0] ?? '—'}</span>
+        </div>
+        <button
+          className="theme-btn"
+          onClick={() => setTheme((v) => (v === 'dark' ? 'light' : 'dark'))}
+          title={t('nav.toggleTheme')}
+        >
+          {theme === 'dark' ? Icons.sun(14) : Icons.moon(14)}
+        </button>
+        <div className="lang-switch">
+          <button className={lang === 'th' ? 'active' : ''} onClick={() => setLanguage('th')}>
+            TH
+          </button>
+          <button className={lang === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>
+            EN
+          </button>
+        </div>
+        <button
+          className="theme-btn"
+          onClick={() => void logout()}
+          title={t('auth.logout')}
+          aria-label={t('auth.logout')}
+        >
+          {Icons.logout(14)}
+        </button>
       </div>
     </header>
   )
