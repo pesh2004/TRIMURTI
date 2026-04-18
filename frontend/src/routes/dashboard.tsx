@@ -2,30 +2,28 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth'
 
-/**
- * Dashboard placeholder for Phase 0. Real implementation (5 sub-pages:
- * Overview, Projects, Financial, Sales pipeline, HSE) lands in Phase 1.
- */
 export function DashboardPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-lg font-semibold">{t('nav.dashboard')}</h1>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
-          Signed in as <span className="font-mono">{user?.email}</span>
+    <div className="hr-page">
+      <div className="page-hd" style={{ display: 'block', marginBottom: 16 }}>
+        <div className="t-label" style={{ marginBottom: 2 }}>
+          TRIMURTI
+        </div>
+        <h1 className="page-title">{t('nav.dashboard')}</h1>
+        <p className="t-xs t-muted" style={{ marginTop: 4 }}>
+          Signed in as <span className="t-mono">{user?.email}</span>
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         <Card>
           <CardHeader>
             <CardTitle>Phase 0 — Foundation</CardTitle>
           </CardHeader>
           <CardBody>
-            <p className="text-sm text-[color:var(--color-fg-muted)]">
-              Scaffold, auth, RBAC, audit, CI all live. See PROGRESS.md for the next
-              module to build.
+            <p className="t-small t-muted" style={{ margin: 0 }}>
+              Scaffold, auth, RBAC, audit, CI all live. See PROGRESS.md for the next module.
             </p>
           </CardBody>
         </Card>
@@ -34,16 +32,13 @@ export function DashboardPage() {
             <CardTitle>Roles</CardTitle>
           </CardHeader>
           <CardBody>
-            <ul className="flex flex-wrap gap-1">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {user?.roles.map((r) => (
-                <li
-                  key={r}
-                  className="rounded bg-[color:var(--color-surface-2)] px-2 py-0.5 font-mono text-xs"
-                >
+                <span key={r} className="badge brand">
                   {r}
-                </li>
+                </span>
               ))}
-            </ul>
+            </div>
           </CardBody>
         </Card>
         <Card>
@@ -51,10 +46,10 @@ export function DashboardPage() {
             <CardTitle>Permissions</CardTitle>
           </CardHeader>
           <CardBody>
-            <div className="max-h-40 overflow-auto">
-              <ul className="space-y-0.5">
+            <div style={{ maxHeight: 160, overflow: 'auto' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {user?.permissions.map((p) => (
-                  <li key={p} className="font-mono text-xs text-[color:var(--color-fg-muted)]">
+                  <li key={p} className="t-mono t-xs t-muted" style={{ padding: '2px 0' }}>
                     {p}
                   </li>
                 ))}

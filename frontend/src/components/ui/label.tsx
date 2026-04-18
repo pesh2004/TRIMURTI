@@ -3,11 +3,7 @@ import { cn } from '@/lib/cn'
 
 export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>>(
   ({ className, ...props }, ref) => (
-    <label
-      ref={ref}
-      className={cn('text-xs font-medium text-[color:var(--color-fg-muted)]', className)}
-      {...props}
-    />
+    <label ref={ref} className={cn('field-lbl', className)} {...props} />
   ),
 )
 Label.displayName = 'Label'

@@ -10,6 +10,6 @@ describe('Button', () => {
 
   it('applies variant classes', () => {
     render(<Button variant="danger">x</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-[color:var(--color-bad)]')
+    expect(screen.getByRole('button')).toHaveClass('btn', 'danger')
   })
 })

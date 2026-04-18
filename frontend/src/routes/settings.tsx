@@ -4,14 +4,16 @@ import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/card'
 export function SettingsPage() {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">{t('nav.settings')}</h1>
+    <div className="hr-page">
+      <h1 className="page-title" style={{ marginBottom: 16 }}>
+        {t('nav.settings')}
+      </h1>
       <Card>
         <CardHeader>
           <CardTitle>Phase 0 placeholder</CardTitle>
         </CardHeader>
         <CardBody>
-          <p className="text-sm text-[color:var(--color-fg-muted)]">
+          <p className="t-small t-muted" style={{ margin: 0 }}>
             Full settings module lands in Phase 1 (company, users, integrations).
           </p>
         </CardBody>

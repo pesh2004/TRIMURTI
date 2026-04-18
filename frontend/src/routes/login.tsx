@@ -47,37 +47,68 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[color:var(--color-bg)] p-4">
-      <Card className="w-full max-w-sm">
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: 'var(--bg-app)',
+        padding: 16,
+      }}
+    >
+      <Card style={{ width: '100%', maxWidth: 360 }}>
         <CardHeader>
-          <CardTitle>{t('app.name')}</CardTitle>
-          <p className="text-xs text-[color:var(--color-fg-muted)]">{t('auth.login')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="logo-mark" style={{ width: 32, height: 32, fontSize: 14 }}>
+              T
+            </div>
+            <div>
+              <CardTitle style={{ fontSize: 15 }}>{t('app.name')}</CardTitle>
+              <p className="t-xs t-muted" style={{ margin: '2px 0 0' }}>
+                {t('auth.login')}
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardBody>
-          <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
+          <form
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+            style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <Label htmlFor="email">{t('auth.email')}</Label>
               <Input id="email" type="email" autoComplete="email" {...register('email')} />
               {errors.email && (
-                <span className="text-xs text-[color:var(--color-bad)]">{errors.email.message}</span>
+                <span className="t-xs" style={{ color: 'var(--bad)' }}>
+                  {errors.email.message}
+                </span>
               )}
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <Label htmlFor="password">{t('auth.password')}</Label>
               <Input id="password" type="password" autoComplete="current-password" {...register('password')} />
               {errors.password && (
-                <span className="text-xs text-[color:var(--color-bad)]">{errors.password.message}</span>
+                <span className="t-xs" style={{ color: 'var(--bad)' }}>
+                  {errors.password.message}
+                </span>
               )}
             </div>
             {submitError && (
               <div
                 role="alert"
-                className="rounded border border-[color:var(--color-bad)] bg-[color:var(--color-bad-bg)] p-2 text-xs text-[color:var(--color-bad)]"
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 4,
+                  border: '1px solid var(--bad)',
+                  background: 'var(--bad-bg)',
+                  color: 'var(--bad)',
+                  fontSize: 12,
+                }}
               >
                 {submitError}
               </div>
             )}
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} style={{ marginTop: 4 }}>
               {submitting ? t('app.loading') : t('auth.submit')}
             </Button>
           </form>
