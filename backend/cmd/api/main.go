@@ -23,6 +23,7 @@ import (
 	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 	authmod "github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/auth"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/health"
+	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/hr"
 )
 
 type echoValidator struct{ v *validator.Validate }
@@ -123,8 +124,22 @@ func main() {
 	authed.Use(mw.Auth(sessions, cfg.CookieName))
 	authed.GET("/auth/me", authHandler.Me)
 
-	// TODO Phase 1 modules: dashboard, settings, hr_employees, gov_rbac, audit, approval.
-	// Each module registers its routes on `authed` and wraps mutations with RequirePermission.
+	// --- HR master (read-only dropdowns) ---
+	hrMaster := hr.NewMasterHandler(pool)
+	hrRead := mw.RequirePermission("hr_master.read")
+	authed.GET("/hr/companies", hrMaster.ListCompanies, hrRead)
+	authed.GET("/hr/departments", hrMaster.ListDepartments, hrRead)
+	authed.GET("/hr/positions", hrMaster.ListPositions, hrRead)
+
+	// --- HR employees ---
+	hrEmp := hr.NewEmployeesHandler(pool, auditWriter)
+	authed.GET("/hr/employees", hrEmp.List, mw.RequirePermission("hr_employees.read"))
+	authed.GET("/hr/employees/:id", hrEmp.Get, mw.RequirePermission("hr_employees.read"))
+	authed.POST("/hr/employees", hrEmp.Create, mw.RequirePermission("hr_employees.write"))
+	authed.PATCH("/hr/employees/:id", hrEmp.Update, mw.RequirePermission("hr_employees.write"))
+	authed.POST("/hr/employees/:id/terminate", hrEmp.Terminate, mw.RequirePermission("hr_employees.terminate"))
+
+	// TODO Phase 1 additions: dashboard, settings, gov_rbac, audit, approval.
 
 	// ---- Server ----
 	srv := &http.Server{

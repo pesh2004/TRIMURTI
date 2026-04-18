@@ -25,8 +25,7 @@ type roleDef struct {
 	Permissions []string // permission codes granted to this role
 }
 
-// Baseline permissions seeded across Phase 0. Module-specific permissions are
-// added by each module's own seeder in Phase 1+.
+// Baseline permissions. Each module extends this as it lands.
 var baselinePermissions = []struct {
 	Code, Module, Action, Description string
 }{
@@ -36,8 +35,11 @@ var baselinePermissions = []struct {
 	{"gov_rbac.write", "gov_rbac", "write", "Manage roles and permissions"},
 	{"settings.read", "settings", "read", "View settings"},
 	{"settings.write", "settings", "write", "Edit settings"},
-	{"hr_employees.read", "hr_employees", "read", "View employees"},
-	{"hr_employees.write", "hr_employees", "write", "Manage employees"},
+	{"hr_master.read", "hr_master", "read", "View companies, departments, positions"},
+	{"hr_employees.read", "hr_employees", "read", "View employees (PII masked)"},
+	{"hr_employees.write", "hr_employees", "write", "Create and edit employees"},
+	{"hr_employees.terminate", "hr_employees", "terminate", "Terminate employees"},
+	{"hr_employees.reveal_pii", "hr_employees", "reveal_pii", "Reveal national_id and salary"},
 	{"approval.read", "approval", "read", "View approval inbox"},
 	{"approval.act", "approval", "act", "Approve or reject items"},
 }
@@ -49,15 +51,32 @@ var roles = []roleDef{
 	},
 	{
 		Code: "CEO", NameEN: "Chief Executive Officer", NameTH: "ประธานเจ้าหน้าที่บริหาร",
-		Permissions: []string{"dashboard.read", "audit.read", "approval.read", "approval.act", "hr_employees.read"},
+		Permissions: []string{
+			"dashboard.read", "audit.read", "approval.read", "approval.act",
+			"hr_master.read", "hr_employees.read", "hr_employees.reveal_pii",
+		},
 	},
 	{
 		Code: "CFO", NameEN: "Chief Financial Officer", NameTH: "ประธานเจ้าหน้าที่การเงิน",
-		Permissions: []string{"dashboard.read", "audit.read", "approval.read", "approval.act"},
+		Permissions: []string{
+			"dashboard.read", "audit.read", "approval.read", "approval.act",
+			"hr_master.read", "hr_employees.read", "hr_employees.reveal_pii",
+		},
+	},
+	{
+		Code: "HR", NameEN: "Human Resources", NameTH: "ฝ่ายบุคคล",
+		Permissions: []string{
+			"dashboard.read", "hr_master.read",
+			"hr_employees.read", "hr_employees.write",
+			"hr_employees.terminate", "hr_employees.reveal_pii",
+		},
 	},
 	{
 		Code: "PM", NameEN: "Project Manager", NameTH: "ผู้จัดการโครงการ",
-		Permissions: []string{"dashboard.read", "approval.read", "approval.act", "hr_employees.read"},
+		Permissions: []string{
+			"dashboard.read", "approval.read", "approval.act",
+			"hr_master.read", "hr_employees.read",
+		},
 	},
 	{
 		Code: "SITE_ENGINEER", NameEN: "Site Engineer", NameTH: "วิศวกรประจำหน้างาน",
@@ -65,8 +84,50 @@ var roles = []roleDef{
 	},
 	{
 		Code: "AUDITOR", NameEN: "Auditor", NameTH: "ผู้ตรวจสอบ",
-		Permissions: []string{"dashboard.read", "audit.read"},
+		Permissions: []string{
+			"dashboard.read", "audit.read",
+			"hr_master.read", "hr_employees.read",
+		},
 	},
+}
+
+// Default HR master data — seeded only if tables are empty. Safe to run repeatedly.
+type deptDef struct{ Code, NameTH, NameEN string }
+type posDef struct {
+	Code, NameTH, NameEN string
+	Level                int
+}
+
+var defaultCompany = struct {
+	Code, NameTH, NameEN, TaxID, Phone, Email string
+}{
+	Code:   "TMR",
+	NameTH: "บริษัท ตรีมูรติ เดโม จำกัด",
+	NameEN: "Trimurti Demo Co., Ltd.",
+	TaxID:  "0105560000000",
+	Phone:  "+66-2-000-0000",
+	Email:  "info@trimurti.local",
+}
+
+var defaultDepartments = []deptDef{
+	{"EXEC", "บริหาร", "Executive"},
+	{"FIN", "บัญชี-การเงิน", "Finance & Accounting"},
+	{"OPS", "ก่อสร้าง", "Construction Operations"},
+	{"PROC", "จัดซื้อ", "Procurement"},
+	{"HR", "บุคคล", "Human Resources"},
+}
+
+var defaultPositions = []posDef{
+	{"CEO", "ประธานเจ้าหน้าที่บริหาร", "Chief Executive Officer", 10},
+	{"CFO", "ประธานเจ้าหน้าที่การเงิน", "Chief Financial Officer", 9},
+	{"COO", "ประธานเจ้าหน้าที่ปฏิบัติการ", "Chief Operating Officer", 9},
+	{"PM", "ผู้จัดการโครงการ", "Project Manager", 7},
+	{"SE", "วิศวกรประจำหน้างาน", "Site Engineer", 5},
+	{"FM", "หัวหน้างาน", "Foreman", 4},
+	{"ACC", "เจ้าหน้าที่บัญชี", "Accountant", 4},
+	{"PO", "เจ้าหน้าที่จัดซื้อ", "Purchasing Officer", 4},
+	{"HRO", "เจ้าหน้าที่บุคคล", "HR Officer", 4},
+	{"WKR", "คนงาน", "Worker", 1},
 }
 
 func allPermissionCodes() []string {
@@ -169,6 +230,40 @@ func main() {
 		die(fmt.Errorf("assign ADMIN: %w", err))
 	}
 
+	// ---- HR master: company / departments / positions ----
+	// Upserts so the seed remains idempotent. Migrations 0002+ must be applied first.
+	var companyID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO companies (code, name_th, name_en, tax_id, phone, email)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en
+		RETURNING id`,
+		defaultCompany.Code, defaultCompany.NameTH, defaultCompany.NameEN,
+		defaultCompany.TaxID, defaultCompany.Phone, defaultCompany.Email).Scan(&companyID)
+	if err != nil {
+		die(fmt.Errorf("upsert company: %w", err))
+	}
+
+	for _, d := range defaultDepartments {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO departments (company_id, code, name_th, name_en)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (company_id, code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en`,
+			companyID, d.Code, d.NameTH, d.NameEN); err != nil {
+			die(fmt.Errorf("upsert department %s: %w", d.Code, err))
+		}
+	}
+
+	for _, p := range defaultPositions {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO positions (code, name_th, name_en, level)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en, level = EXCLUDED.level`,
+			p.Code, p.NameTH, p.NameEN, p.Level); err != nil {
+			die(fmt.Errorf("upsert position %s: %w", p.Code, err))
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		die(err)
 	}
@@ -180,6 +275,9 @@ func main() {
 	} else {
 		fmt.Printf("  admin password: unchanged (use existing or set SEED_ADMIN_PASSWORD to rotate)\n")
 	}
+	fmt.Printf("  company:        %s (%s)\n", defaultCompany.NameEN, defaultCompany.Code)
+	fmt.Printf("  departments:    %d seeded\n", len(defaultDepartments))
+	fmt.Printf("  positions:      %d seeded\n", len(defaultPositions))
 }
 
 func mustRandomPassword(n int) string {
