@@ -7,6 +7,8 @@ compliance with Thai accounting law + PDPA.
 See [SPEC.md](SPEC.md) for the full module catalogue (80 modules across 17 groups)
 and [PROGRESS.md](PROGRESS.md) for the current build checklist.
 
+Live demo (Phase 0): https://168.144.32.187.sslip.io
+
 ## Stack
 
 | Layer | Tech |
