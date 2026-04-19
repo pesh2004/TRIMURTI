@@ -91,6 +91,14 @@ services:
       CORS_ALLOWED_ORIGINS: ${APP_BASE_URL}
       RATE_LIMIT_PER_MINUTE: 100
       LOGIN_RATE_LIMIT_PER_15MIN: 5
+      # SMTP — leave SMTP_HOST empty in .env to use the ConsoleSender
+      # fallback (reset URL printed to backend logs). When all four are
+      # set, the backend sends real mail via STARTTLS.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@trimurti.local}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
