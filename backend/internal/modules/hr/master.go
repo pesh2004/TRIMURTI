@@ -6,6 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+
+	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 )
 
 // Master — read-only endpoints for dropdowns (companies, departments, positions).
@@ -33,7 +35,7 @@ func (h *MasterHandler) ListCompanies(c echo.Context) error {
 	for rows.Next() {
 		var co Company
 		if err := rows.Scan(&co.ID, &co.Code, &co.NameTH, &co.NameEN, &co.IsActive); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return mw.InternalError(err)
 		}
 		out = append(out, co)
 	}
@@ -57,14 +59,14 @@ func (h *MasterHandler) ListDepartments(c echo.Context) error {
 
 	rows, err := h.pool.Query(c.Request().Context(), q, args...)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	defer rows.Close()
 	out := []Department{}
 	for rows.Next() {
 		var d Department
 		if err := rows.Scan(&d.ID, &d.CompanyID, &d.Code, &d.NameTH, &d.NameEN, &d.IsActive); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return mw.InternalError(err)
 		}
 		out = append(out, d)
 	}
@@ -78,14 +80,14 @@ func (h *MasterHandler) ListPositions(c echo.Context) error {
 		WHERE is_active
 		ORDER BY level DESC, name_en`)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	defer rows.Close()
 	out := []Position{}
 	for rows.Next() {
 		var p Position
 		if err := rows.Scan(&p.ID, &p.Code, &p.NameTH, &p.NameEN, &p.Level, &p.IsActive); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return mw.InternalError(err)
 		}
 		out = append(out, p)
 	}

@@ -47,6 +47,13 @@ func Logger(logger zerolog.Logger) echo.MiddlewareFunc {
 			ev := logger.Info()
 			if err != nil || status >= 500 {
 				ev = logger.Error().Err(err)
+				// Surface the underlying cause when handlers wrap it via
+				// middleware.InternalError — the public message is
+				// intentionally opaque, but ops need the real error for
+				// debugging.
+				if he, ok := err.(*echo.HTTPError); ok && he.Internal != nil {
+					ev = ev.AnErr("internal_err", he.Internal)
+				}
 			} else if status >= 400 {
 				ev = logger.Warn()
 			}

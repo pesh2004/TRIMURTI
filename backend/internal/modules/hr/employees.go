@@ -16,6 +16,7 @@ import (
 
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/audit"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/auth"
+	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 )
 
 const (
@@ -136,7 +137,7 @@ func (h *EmployeesHandler) List(c echo.Context) error {
 			&it.PositionID, &it.PositionNameEN, &it.PositionNameTH,
 			&it.EmploymentType, &it.HiredAt, &it.TerminatedAt, &it.Status,
 		); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return mw.InternalError(err)
 		}
 		items = append(items, it)
 	}
@@ -162,7 +163,7 @@ func (h *EmployeesHandler) Get(c echo.Context) error {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "employee not found")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	// Audit PII reveal server-side. The frontend drawer also toasts but that
@@ -232,7 +233,7 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
@@ -242,7 +243,7 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusBadRequest, "department_id not found")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	if deptCompanyID != req.CompanyID {
 		return echo.NewHTTPError(http.StatusBadRequest, "department does not belong to the selected company")
@@ -282,12 +283,12 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	emp, err := h.loadEmployee(ctx, newID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	_ = h.audit.Write(ctx, audit.Entry{
@@ -332,7 +333,7 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "employee not found")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	// Build a dynamic UPDATE; only supplied fields change.
@@ -431,7 +432,7 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 
 	after, err := h.loadEmployee(ctx, id)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	_ = h.audit.Write(ctx, audit.Entry{
@@ -476,7 +477,7 @@ func (h *EmployeesHandler) Terminate(c echo.Context) error {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "employee not found")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	if before.Status == "terminated" {
 		return echo.NewHTTPError(http.StatusBadRequest, "employee already terminated")
@@ -486,12 +487,12 @@ func (h *EmployeesHandler) Terminate(c echo.Context) error {
 		UPDATE employees
 		SET status = 'terminated', terminated_at = $1, terminated_reason = $2
 		WHERE id = $3`, termDate, req.TerminatedReason, id); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	after, err := h.loadEmployee(ctx, id)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	_ = h.audit.Write(ctx, audit.Entry{

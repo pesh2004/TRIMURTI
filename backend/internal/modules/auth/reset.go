@@ -18,6 +18,7 @@ import (
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/audit"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/auth"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/email"
+	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 )
 
 // ResetTTL is how long a fresh reset token is valid. Matches what the
@@ -70,12 +71,12 @@ func (h *ResetHandler) RequestReset(c echo.Context) error {
 			// Silent no-op for non-existent email — same response shape + timing.
 			return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	token, tokenHash, err := newResetToken()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	expiresAt := time.Now().Add(ResetTTL).UTC()
@@ -84,31 +85,41 @@ func (h *ResetHandler) RequestReset(c echo.Context) error {
 		VALUES ($1,$2,$3,$4,$5)`,
 		userID, tokenHash, expiresAt, nullIfEmpty(c.RealIP()), nullIfEmpty(c.Request().UserAgent()),
 	); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	resetURL := fmt.Sprintf("%s/password-reset?token=%s", h.baseURL, token)
-	if err := h.sendResetMail(ctx, email, resetURL); err != nil {
-		// Don't leak the failure to the caller (would enable oracle attacks);
-		// audit + log and return 200.
-		_ = h.base.audit.Write(ctx, audit.Entry{
-			IP:        c.RealIP(),
-			UserAgent: c.Request().UserAgent(),
-			Action:    "auth.password_reset_request_mail_failed",
-			Entity:    "user",
-			EntityID:  fmt.Sprintf("%d", userID),
-			After:     map[string]any{"error": err.Error()},
-		})
-	}
 
-	_ = h.base.audit.Write(ctx, audit.Entry{
-		IP:        c.RealIP(),
-		UserAgent: c.Request().UserAgent(),
-		Action:    "auth.password_reset_requested",
-		Entity:    "user",
-		EntityID:  fmt.Sprintf("%d", userID),
-		After:     map[string]any{"expires_at": expiresAt},
-	})
+	// Fire-and-forget the email + audit so the response returns in ~the
+	// same time whether or not the user exists. An SMTP round-trip on the
+	// "user exists" path used to be a 200-500ms timing oracle an attacker
+	// could read to enumerate accounts; detaching it closes that channel.
+	//
+	// We deliberately use context.Background() so a client disconnect
+	// doesn't cancel the email mid-send. The reset token is already
+	// committed to the DB, so failing to email leaves the row orphaned
+	// (expires in 15m) — preferable to inconsistent state.
+	ip := c.RealIP()
+	ua := c.Request().UserAgent()
+	go func() {
+		bg := context.Background()
+		if err := h.sendResetMail(bg, email, resetURL); err != nil {
+			_ = h.base.audit.Write(bg, audit.Entry{
+				IP: ip, UserAgent: ua,
+				Action:   "auth.password_reset_request_mail_failed",
+				Entity:   "user",
+				EntityID: fmt.Sprintf("%d", userID),
+				After:    map[string]any{"error": err.Error()},
+			})
+		}
+		_ = h.base.audit.Write(bg, audit.Entry{
+			IP: ip, UserAgent: ua,
+			Action:   "auth.password_reset_requested",
+			Entity:   "user",
+			EntityID: fmt.Sprintf("%d", userID),
+			After:    map[string]any{"expires_at": expiresAt},
+		})
+	}()
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -141,7 +152,7 @@ func (h *ResetHandler) ConfirmReset(c echo.Context) error {
 
 	tx, err := h.base.pool.Begin(ctx)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
@@ -157,7 +168,7 @@ func (h *ResetHandler) ConfirmReset(c echo.Context) error {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 	if usedAt != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "token already used")
@@ -168,7 +179,7 @@ func (h *ResetHandler) ConfirmReset(c echo.Context) error {
 
 	hash, err := auth.Hash(req.NewPassword, auth.DefaultParams)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	if _, err := tx.Exec(ctx, `
@@ -178,16 +189,16 @@ func (h *ResetHandler) ConfirmReset(c echo.Context) error {
 		       failed_login_attempts = 0,
 		       locked_until = NULL
 		 WHERE id = $2`, hash, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1`, tokID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return mw.InternalError(err)
 	}
 
 	_ = h.base.audit.Write(ctx, audit.Entry{
