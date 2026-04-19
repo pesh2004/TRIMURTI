@@ -200,4 +200,4 @@ After real data is in, rotation becomes a managed procedure (see above).
 
 | Date (UTC) | Operator | Triggered by | Secrets rotated | Notes |
 |---|---|---|---|---|
-| _none recorded_ | — | — | — | Target state: every entry here represents a completed rotation, not a suspected one. |
+| 2026-04-19 ~07:50 | pesh2004 | Session-2 cutover (initial post-bootstrap rotation) | `REDIS_PASSWORD`, `SESSION_SECRET`, `POSTGRES_PASSWORD`, `SEED_ADMIN_PASSWORD` | PII key deferred until first customer data. Two sub-incidents surfaced mid-rotation and are now fixed in code: (a) `POSTGRES_PASSWORD` generated via `openssl rand -base64 24` contained `/`, which silently broke `DATABASE_URL` userinfo parsing — rotated to hex; preflight now rejects URL-unsafe chars. (b) `seed` ignored `SEED_ADMIN_PASSWORD` for existing users — fixed in f4206a6 so the env var now actually rotates the password. Login verified post-rotation (`HTTP 200`, ADMIN role + 13 permissions). |

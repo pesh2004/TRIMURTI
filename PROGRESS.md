@@ -152,7 +152,7 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 - [x] `PII_ENCRYPTION_KEY` dev-fallback removed; `config.Load()` fail-loud on empty, placeholder, or ≤whitespace. Covered by `internal/config/config_test.go` including regression on the old fallback literal.
 - [x] Deploy script refuses to start if any of `POSTGRES_PASSWORD` / `REDIS_PASSWORD` / `SESSION_SECRET` / `PII_ENCRYPTION_KEY` is missing, matches a known placeholder, or is shorter than 32 chars (`deploy/preflight.sh`, runs as step 0/5 in `deploy/deploy.sh`)
-- [ ] Initial `SESSION_SECRET`, PII key, POSTGRES_PASSWORD, REDIS_PASSWORD, and seeded admin password rotated on the live droplet; prior values treated as leaked — **operator task, see `deploy/SECRETS.md`**
+- [x] Initial `REDIS_PASSWORD`, `SESSION_SECRET`, `POSTGRES_PASSWORD`, and `SEED_ADMIN_PASSWORD` rotated on the live droplet 2026-04-19 (see `deploy/SECRETS.md` incident log). `PII_ENCRYPTION_KEY` rotation deferred until before the first real customer data lands, per the destructive-safe procedure in the runbook.
 - [x] `deploy/SECRETS.md` runbook — inventory, per-secret rotation procedure (PII has destructive-safe re-encrypt), incident-response playbook, incident log template
 
 ### Session 3 — User admin + password recovery
