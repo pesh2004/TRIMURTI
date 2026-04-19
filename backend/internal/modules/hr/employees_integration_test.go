@@ -37,6 +37,7 @@ type testFixture struct {
 	handler    *EmployeesHandler
 	writer     *audit.Writer
 	e          *echo.Echo
+	userID     int64
 	companyID  int64
 	deptID     int64
 	positionID int64
@@ -60,13 +61,28 @@ func setupFixture(t *testing.T) *testFixture {
 	t.Cleanup(pool.Close)
 
 	// Truncate in FK-safe order. RESTART IDENTITY keeps employee_code
-	// sequences deterministic across tests.
+	// sequences deterministic across tests. users is included so the test
+	// user's id=1 is always predictable across runs, and because audit_log
+	// rows reference users(id) — a stale reference would FK-block new
+	// inserts.
 	if _, err := pool.Exec(ctx, `
-		TRUNCATE employees, employee_code_sequences, departments, positions, companies,
-		         audit_log_2026
+		TRUNCATE users, employees, employee_code_sequences, departments, positions,
+		         companies, audit_log_2026
 		RESTART IDENTITY CASCADE
 	`); err != nil {
 		t.Fatalf("truncate: %v", err)
+	}
+
+	// Seed a test user so audit rows' user_id FK resolves. Without this,
+	// audit.Write silently fails (the handler ignores the returned error)
+	// and integration tests asserting audit rows see zero.
+	var userID int64
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (email, username, password_hash, display_name)
+		VALUES ('integration@test.local', 'integration', 'stub-not-a-real-hash', 'Integration Test')
+		RETURNING id
+	`).Scan(&userID); err != nil {
+		t.Fatalf("seed test user: %v", err)
 	}
 
 	var companyID, deptID, positionID int64
@@ -96,6 +112,7 @@ func setupFixture(t *testing.T) *testFixture {
 
 	return &testFixture{
 		pool: pool, handler: handler, writer: writer, e: e,
+		userID:    userID,
 		companyID: companyID, deptID: deptID, positionID: positionID,
 	}
 }
@@ -107,7 +124,7 @@ func (f *testFixture) ctxWithSession(method, path, body string, perms ...string)
 	if body != "" {
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	}
-	sess := &auth.Session{UserID: 1, Email: "test@example.com", Permissions: perms}
+	sess := &auth.Session{UserID: f.userID, Email: "integration@test.local", Permissions: perms}
 	req = req.WithContext(auth.WithSession(req.Context(), sess))
 	rec := httptest.NewRecorder()
 	return f.e.NewContext(req, rec), rec
