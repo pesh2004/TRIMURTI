@@ -33,10 +33,16 @@ happens if it leaks. Companion to `deploy/.env.production.example`.
 
 ### POSTGRES_PASSWORD
 
+**⚠️ Generate with `openssl rand -hex 24`, NOT base64.** The password goes
+into `DATABASE_URL=postgres://trimurti:PASS@postgres:5432/...`; base64
+emits `/` `+` `=` chars which break URL parsing silently. `/` terminates
+the userinfo portion, making `pq` see the truncated password. Hex uses
+only `0-9a-f` — safe inside a URL.
+
 ```bash
 ssh trimurti@<DROPLET>
 cd /srv/trimurti
-NEW_PW=$(openssl rand -base64 24)
+NEW_PW=$(openssl rand -hex 24)     # 48 hex chars, URL-safe
 
 # 1. Change inside the live postgres first.
 docker exec -e PGPASSWORD="$(grep ^POSTGRES_PASSWORD .env | cut -d= -f2-)" trimurti-postgres \
@@ -45,7 +51,9 @@ docker exec -e PGPASSWORD="$(grep ^POSTGRES_PASSWORD .env | cut -d= -f2-)" trimu
 # 2. Update .env.
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$NEW_PW|" .env
 
-# 3. Restart services that hold a DB connection.
+# 3. Restart services. `compose run migrate` inside deploy.sh forces a
+#    postgres recreate so the migrate container gets a fresh connection
+#    with the new password.
 ./deploy/deploy.sh
 
 # 4. Verify login still works from the app.

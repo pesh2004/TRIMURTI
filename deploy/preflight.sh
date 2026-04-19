@@ -82,6 +82,21 @@ if [[ ${#PII_ENCRYPTION_KEY} -lt 32 ]]; then
   errors=$((errors + 1))
 fi
 
+# POSTGRES_PASSWORD must be URL-safe. It gets interpolated into
+# `postgres://trimurti:PASS@postgres:5432/db?sslmode=disable`; a `/` in
+# PASS terminates the userinfo portion of the URL, `pq` sees truncated
+# password, auth fails silently against a password that looks correct on
+# inspection. `+` technically survives but confuses some tools; reject it
+# too. `@` would break host parsing; `?` would break query parsing.
+#
+# Fix by generating with `openssl rand -hex 24` (48 hex chars) instead of
+# the base64 variants.
+if [[ "$POSTGRES_PASSWORD" =~ [/@?] ]]; then
+  echo "preflight: ERROR — POSTGRES_PASSWORD contains a URL-unsafe char (/, @, or ?);" >&2
+  echo "preflight:          rotate with: openssl rand -hex 24   (see deploy/SECRETS.md)" >&2
+  errors=$((errors + 1))
+fi
+
 # APP_ENV must be production when deploying to the droplet. The compose file
 # also hard-sets it but we want the .env value to match so an operator
 # inspecting the file isn't misled.

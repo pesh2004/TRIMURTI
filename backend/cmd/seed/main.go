@@ -195,7 +195,16 @@ func main() {
 	if email == "" {
 		email = "admin@trimurti.local"
 	}
-	password := os.Getenv("SEED_ADMIN_PASSWORD")
+	// Behaviour matrix:
+	//   SEED_ADMIN_PASSWORD unset + user absent  → auto-generate, persist, print once.
+	//   SEED_ADMIN_PASSWORD unset + user present → keep current password ("unchanged").
+	//   SEED_ADMIN_PASSWORD set   + user absent  → persist given password.
+	//   SEED_ADMIN_PASSWORD set   + user present → ROTATE to given password.
+	//
+	// Previous behaviour silently ignored the set-but-user-present case, which
+	// made Session-2 password rotation impossible without SQL surgery.
+	explicitPassword := os.Getenv("SEED_ADMIN_PASSWORD")
+	password := explicitPassword
 	generated := false
 	if password == "" {
 		password = mustRandomPassword(20)
@@ -206,20 +215,42 @@ func main() {
 		die(err)
 	}
 
-	var userID int64
-	err = tx.QueryRow(ctx, `
+	// Was the user there before we touched the table?
+	var existedBefore bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)`, email).Scan(&existedBefore); err != nil {
+		die(fmt.Errorf("check admin existence: %w", err))
+	}
+
+	// Build the UPSERT conditionally: update password_hash only when the caller
+	// explicitly provided a password. Otherwise keep the existing hash so a
+	// no-op seed run never resets credentials by accident.
+	upsertSQL := `
 		INSERT INTO users (email, username, password_hash, display_name, display_name_th)
 		VALUES ($1,$2,$3,$4,$5)
 		ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name
-		RETURNING id`, email, "admin", hash, "Administrator", "ผู้ดูแลระบบ").Scan(&userID)
-	if err != nil {
+		RETURNING id`
+	if explicitPassword != "" {
+		upsertSQL = `
+			INSERT INTO users (email, username, password_hash, display_name, display_name_th)
+			VALUES ($1,$2,$3,$4,$5)
+			ON CONFLICT (email) DO UPDATE SET
+				display_name  = EXCLUDED.display_name,
+				password_hash = EXCLUDED.password_hash,
+				password_changed_at = NOW(),
+				failed_login_attempts = 0,
+				locked_until = NULL
+			RETURNING id`
+	}
+
+	var userID int64
+	if err := tx.QueryRow(ctx, upsertSQL, email, "admin", hash, "Administrator", "ผู้ดูแลระบบ").Scan(&userID); err != nil {
 		die(fmt.Errorf("upsert admin: %w", err))
 	}
 
-	// If the user already existed, keep their current password (don't reset silently).
-	var existed bool
-	if err := tx.QueryRow(ctx, `SELECT password_hash <> $1 FROM users WHERE id = $2`, hash, userID).Scan(&existed); err == nil && existed {
-		generated = false
+	// Message for the operator. Only overwrite `password` for display when we
+	// truly left it alone (no explicit env, user was already there).
+	rotated := explicitPassword != "" && existedBefore
+	if !generated && !rotated {
 		password = "<unchanged>"
 	}
 
@@ -270,9 +301,12 @@ func main() {
 
 	fmt.Println("seed: complete")
 	fmt.Printf("  admin email:    %s\n", email)
-	if generated {
+	switch {
+	case generated:
 		fmt.Printf("  admin password: %s   <-- write this down; it is NOT stored\n", password)
-	} else {
+	case rotated:
+		fmt.Printf("  admin password: ROTATED to the value from SEED_ADMIN_PASSWORD\n")
+	default:
 		fmt.Printf("  admin password: unchanged (use existing or set SEED_ADMIN_PASSWORD to rotate)\n")
 	}
 	fmt.Printf("  company:        %s (%s)\n", defaultCompany.NameEN, defaultCompany.Code)
