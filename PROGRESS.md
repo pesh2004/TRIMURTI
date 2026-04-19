@@ -25,18 +25,16 @@ Foundation before any money or paperwork flows.
 
 - [ ] `dashboard` · Enterprise overview (5 sub-pages: Overview, Projects, Financial, Sales pipeline, HSE)
 - [ ] `settings` · Company/users/integrations config
-- [~] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
+- [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
   - [x] Migration 0002 (schema) + 0003 (pgcrypto field-level encryption) applied cleanly
   - [x] Backend handlers: list / get / create / update / terminate with PII masking + reveal_pii permission
   - [x] Audit writes on every mutation
   - [x] Frontend list + form + drawer ported pixel-near from design handoff; i18n TH + EN
   - [x] Permissions (`hr_employees.read|write|terminate|reveal_pii`) seeded in RBAC
-  - [ ] Backend handler/service tests (`backend/internal/modules/hr/*_test.go`) — not written yet
-  - [ ] Frontend component tests for EmployeeList / EmployeeForm / EmployeeDrawer (Vitest + RTL)
-  - [ ] Playwright E2E — blocked on Phase-0 E2E wiring (no `frontend/e2e/` yet)
+  - [x] Backend unit tests at `backend/internal/modules/hr/employees_test.go` (PII masking / parseDate / helpers)
+  - [x] Frontend component tests (Vitest + RTL): EmployeeList, EmployeeForm, EmployeeDrawer, pills, format helpers
+  - [x] Playwright E2E `frontend/e2e/hr-employees.spec.ts` — login + open employees list
   - [x] Module README at `backend/internal/modules/hr/README.md`
-
-  Upgrade the parent row to `[x]` once the three unchecked sub-items above are done.
 - [ ] `gov_rbac` · Role / user / permission management UI
 - [ ] `audit` · Audit log viewer
 - [ ] `approval` · Approval inbox + threshold matrix (Kanban)
