@@ -124,7 +124,9 @@ docker compose -f deploy/docker-compose.prod.yml --env-file .env \
 ```bash
 sudo cp /srv/trimurti/deploy/backup.cron /etc/cron.d/trimurti-backup
 sudo chmod 644 /etc/cron.d/trimurti-backup
-sudo systemctl reload cron
+# cron re-reads /etc/cron.d/ automatically every minute — no reload needed.
+# On Ubuntu 24.04 `systemctl reload cron` is explicitly unsupported; don't
+# run it, it'll error out harmlessly but confuse operators.
 sudo touch /var/log/trimurti-backup.log
 sudo chown trimurti:trimurti /var/log/trimurti-backup.log
 # Test it once:
