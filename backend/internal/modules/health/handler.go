@@ -19,14 +19,15 @@ func New(pool *pgxpool.Pool, rdb *redis.Client) *Handler {
 	return &Handler{pool: pool, rdb: rdb}
 }
 
-// Liveness is a cheap check — the process is up and can serve HTTP.
-func (h *Handler) Liveness(c echo.Context) error {
-	return c.JSON(http.StatusOK, echo.Map{"status": "ok"})
-}
-
-// Readiness checks downstream dependencies. Returns 503 when any are unhealthy so
-// load balancers / k8s can route traffic away.
-func (h *Handler) Readiness(c echo.Context) error {
+// Check pings every downstream dependency we need to serve traffic and
+// returns 503 if any fail. UptimeRobot + the deploy smoke-test hit this,
+// so "green" actually means "the system can talk to its data tier",
+// not just "the process is alive".
+//
+// We skip the internal error details in the fail branch — the response is
+// returned to an anonymous caller and leaking pgx error strings into a
+// 503 body is reconnaissance signal for an attacker probing the stack.
+func (h *Handler) Check(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
 	defer cancel()
 
@@ -35,14 +36,14 @@ func (h *Handler) Readiness(c echo.Context) error {
 	ok := true
 
 	if err := h.pool.Ping(ctx); err != nil {
-		checks["database"] = echo.Map{"status": "fail", "error": err.Error()}
+		checks["database"] = echo.Map{"status": "fail"}
 		ok = false
 	} else {
 		checks["database"] = echo.Map{"status": "ok"}
 	}
 
 	if err := h.rdb.Ping(ctx).Err(); err != nil {
-		checks["redis"] = echo.Map{"status": "fail", "error": err.Error()}
+		checks["redis"] = echo.Map{"status": "fail"}
 		ok = false
 	} else {
 		checks["redis"] = echo.Map{"status": "ok"}
@@ -56,6 +57,9 @@ func (h *Handler) Readiness(c echo.Context) error {
 }
 
 func (h *Handler) Register(g *echo.Group) {
-	g.GET("/healthz", h.Liveness)
-	g.GET("/readyz", h.Readiness)
+	// Both paths run the same deep check. /readyz stays as a k8s-style
+	// alias so anything that currently polls it (if added later) still
+	// works without a rename.
+	g.GET("/healthz", h.Check)
+	g.GET("/readyz", h.Check)
 }

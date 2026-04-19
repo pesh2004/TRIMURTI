@@ -171,11 +171,11 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 ### Session 5 — Ops basics
 
-- [ ] `/healthz` verifies the DB + Redis connections (currently only returns "ok" from the process)
-- [ ] Uptime monitor wired (UptimeRobot or similar) with email alert on `/healthz` fail
-- [ ] PDPA self-export endpoint: authenticated user can download their own data as JSON
-- [ ] Log access path documented (`deploy/OPS.md`)
-- [ ] TLS cert renewal force-tested — next renewal date recorded
+- [x] `/healthz` and `/readyz` both run the deep check (Postgres ping + Redis ping; 503 with `status: degraded` on failure). Error details kept server-side; response body is opaque to avoid reconnaissance signal.
+- [x] PDPA self-service export: `GET /api/v1/me/export` returns the user row + employee record (PII decrypted since the caller is the data subject) + last 1000 audit_log entries authored by the user. "Download my data" button on the dashboard triggers the save. Every export writes an `me.data_export` audit row.
+- [x] `deploy/OPS.md` runbook — log access recipes, audit-trail spelunking SQL, health/TLS verification, common tasks, troubleshooting matrix, plus empty test-log tables for TLS renewal and uptime-alert drills.
+- [ ] Uptime monitor wired (UptimeRobot) with email alert on `/healthz` fail — **operator task, setup steps documented in `deploy/OPS.md#uptime-monitoring-uptimerobot`**; test-log table at the bottom of the same doc waits for the first successful "break Redis → alert fires" drill.
+- [ ] TLS cert renewal force-tested — **operator task, recipe documented in `deploy/OPS.md#tls-certificate-renewal`**; log table waits for the first recorded renewal. Caddy's automatic path has been running since Phase 0; this item is about *proving* it still works before the first cert rotation expires.
 
 ---
 

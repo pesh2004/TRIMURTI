@@ -127,6 +127,28 @@ export const features: Feature[] = [
     ],
   },
   {
+    id: 'compliance.pdpa_export',
+    category: 'compliance',
+    status: 'live',
+    since: 'Phase 0 (Ops 5)',
+    title_th: 'PDPA: ดาวน์โหลดข้อมูลตัวเอง',
+    title_en: 'PDPA data-subject-access export',
+    summary_th:
+      'ผู้ใช้ดาวน์โหลดข้อมูลทั้งหมดที่ระบบมีเกี่ยวกับตัวเองเป็นไฟล์ JSON ได้เลย — user row, employee (PII ถอดรหัสให้เจ้าของข้อมูล), audit trail ของตัวเอง (1000 รายการล่าสุด) ทุกการ export มี audit row บันทึกไว้',
+    summary_en:
+      'Authenticated user downloads everything the system holds about them as one JSON file — user row, employee record (PII decrypted since they are the data subject), last 1000 audit trail entries. Every export itself is audited.',
+    highlights_th: [
+      'ตอบสนองสิทธิ์ "data subject access" ของ PDPA มาตรา 30',
+      'Cap 1000 audit rows กัน memory abuse',
+      'การ export ถูก audit (action=me.data_export) — reconstruct ได้ว่าใครขอเมื่อไหร่',
+    ],
+    highlights_en: [
+      'Satisfies PDPA §30 "data subject access" right out of the box',
+      'Audit-trail capped at 1000 rows to bound memory on repeated calls',
+      'The export itself audits (action=me.data_export) — who requested, when',
+    ],
+  },
+  {
     id: 'compliance.pii',
     category: 'compliance',
     status: 'live',

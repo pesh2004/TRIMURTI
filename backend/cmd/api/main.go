@@ -25,6 +25,7 @@ import (
 	authmod "github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/auth"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/health"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/hr"
+	meMod "github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/me"
 )
 
 type echoValidator struct{ v *validator.Validate }
@@ -138,6 +139,10 @@ func main() {
 	authed.Use(mw.Auth(sessions, cfg.CookieName))
 	authed.Use(mw.CSRF())
 	authed.GET("/auth/me", authHandler.Me)
+
+	// --- /me/* — self-service endpoints (PDPA data export lives here) ---
+	meHandler := meMod.New(pool, auditWriter, cfg.PIIEncryptionKey)
+	authed.GET("/me/export", meHandler.Export)
 
 	// --- HR master (read-only dropdowns) ---
 	hrMaster := hr.NewMasterHandler(pool)

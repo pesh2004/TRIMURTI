@@ -31,6 +31,10 @@
     "title": "What TRIMURTI can do today",
     "subtitle": "A short, customer-facing overview of everything the system delivers right now plus what's on the roadmap. Updated by the engineering team on every release."
   },
+  "me": {
+    "exportButton": "Download my data",
+    "exportHint": "PDPA: everything the system holds about you, as one JSON file. Keep it secret — includes plaintext ID and salary."
+  },
   "nav": {
     "dashboard": "Dashboard",
     "settings": "Settings",
