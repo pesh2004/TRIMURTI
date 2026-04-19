@@ -72,7 +72,7 @@ Open http://localhost:5173 and log in with the seeded admin (see output of `make
 3. Write the migration in `backend/migrations/`.
 4. Write the SQL queries in `backend/queries/` and run `make sqlc`.
 5. Add the module handler in `backend/internal/modules/<module_id>/`.
-6. Add the frontend route + components under `frontend/src/routes/(app)/<module_id>/`.
+6. Add the frontend page at `frontend/src/routes/<module_id>.tsx`, register it in `frontend/src/router.tsx`, and put module components under `frontend/src/components/<module_id>/`.
 7. Update i18n dictionaries.
 8. Write tests: unit + integration (backend), component + E2E (frontend).
 9. Check the box in `PROGRESS.md`.

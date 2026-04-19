@@ -25,7 +25,18 @@ Foundation before any money or paperwork flows.
 
 - [ ] `dashboard` · Enterprise overview (5 sub-pages: Overview, Projects, Financial, Sales pipeline, HSE)
 - [ ] `settings` · Company/users/integrations config
-- [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
+- [~] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
+  - [x] Migration 0002 (schema) + 0003 (pgcrypto field-level encryption) applied cleanly
+  - [x] Backend handlers: list / get / create / update / terminate with PII masking + reveal_pii permission
+  - [x] Audit writes on every mutation
+  - [x] Frontend list + form + drawer ported pixel-near from design handoff; i18n TH + EN
+  - [x] Permissions (`hr_employees.read|write|terminate|reveal_pii`) seeded in RBAC
+  - [ ] Backend handler/service tests (`backend/internal/modules/hr/*_test.go`) — not written yet
+  - [ ] Frontend component tests for EmployeeList / EmployeeForm / EmployeeDrawer (Vitest + RTL)
+  - [ ] Playwright E2E — blocked on Phase-0 E2E wiring (no `frontend/e2e/` yet)
+  - [x] Module README at `backend/internal/modules/hr/README.md`
+
+  Upgrade the parent row to `[x]` once the three unchecked sub-items above are done.
 - [ ] `gov_rbac` · Role / user / permission management UI
 - [ ] `audit` · Audit log viewer
 - [ ] `approval` · Approval inbox + threshold matrix (Kanban)
@@ -124,7 +135,7 @@ Cost side: PR → RFQ → PO → GRN → 3-Way → AP.
 A module is **done** (`[x]`) only when **all** of these are true:
 
 1. Migration merged and applied cleanly.
-2. `sqlc`-generated code compiles.
+2. Either `sqlc`-generated code compiles, **or** the module's DB access is through vetted pgx (current default — sqlc codegen is deferred until a module with many simple CRUD queries benefits from it).
 3. Backend handlers: unit + integration tests pass (`go test ./internal/modules/<id>/...`).
 4. Frontend route: component tests pass + one Playwright E2E path.
 5. i18n: both TH and EN strings present.

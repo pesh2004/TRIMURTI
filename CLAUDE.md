@@ -46,19 +46,19 @@ backend/              Go API
   sqlc.yaml
 frontend/
   src/
-    routes/           TanStack Router file-based routes
-      (auth)/         Login, password reset
-      (app)/          Everything behind auth
-        _layout.tsx   Sidebar + topbar (ported from prototype)
-        <module_id>/
-          route.tsx
-          _index.tsx
+    router.tsx        Manual TanStack Router tree — one createRoute() per page
+    routes/           Route components (flat, not file-based)
+      root.tsx        RootLayout
+      login.tsx       LoginPage (public)
+      app-layout.tsx  AppLayout — sidebar + topbar, wraps authed routes
+      <module_id>.tsx Module page component (registered in router.tsx)
     components/
       layout/         Sidebar, topbar, palette
-      ui/             shadcn/ui primitives
-      modules/        Module-specific shared components
+      ui/             shadcn-style primitives
+      <module_id>/    Module-specific components (list, form, drawer, etc.)
     lib/
       api.ts          Fetch wrapper
+      api/            Per-module typed API clients (e.g. hr.ts)
       auth.tsx        Auth context
       i18n/           i18next + dictionaries
     styles/
@@ -77,7 +77,7 @@ design/
 6. **Module skeleton:** `backend/internal/modules/<module_id>/` with `handler.go`, `service.go`, `repository.go`, `types.go`.
 7. **Register route:** in `cmd/api/main.go` under the `/api/v1` group with `requirePermission("<module_id>.<action>")`.
 8. **Audit:** every mutation handler calls `audit.Write(ctx, action, entity, before, after)`.
-9. **Frontend route:** `frontend/src/routes/(app)/<module_id>/route.tsx` (layout), `_index.tsx` (list page). Use TanStack Query for fetching, TanStack Table for the grid, shadcn for components.
+9. **Frontend route:** add page component at `frontend/src/routes/<module_id>.tsx`, register it in `frontend/src/router.tsx` as a child of `appLayoutRoute`. Use TanStack Query for fetching, TanStack Table for the grid, shadcn-style primitives for components. Per-module components live under `frontend/src/components/<module_id>/`.
 10. **i18n:** add keys to both `frontend/src/lib/i18n/th.json` and `en.json`.
 11. **Permission seed:** add `<module_id>.read`, `<module_id>.write`, etc. to the `gov_rbac` seed.
 12. **Tests:**
@@ -115,7 +115,7 @@ These rules are enforced and can break the build:
 
 - `strict: true` is on. No `any` — use `unknown` and narrow, or define a type.
 - Server state → TanStack Query. Client state → Zustand or local `useState`. Never mix.
-- Forms → React Hook Form + Zod schema. Same Zod schema is the single source of truth; backend validation mirrors it via OpenAPI.
+- Forms → React Hook Form + Zod schema. Keep the frontend Zod schema and the backend `validate:` struct tags in sync manually for now. (An OpenAPI contract is planned but not authored yet — do not cite it as the source of truth.)
 - Styling → Tailwind classes in JSX. Use `cn()` helper (clsx + tailwind-merge) for conditionals. No CSS-in-JS.
 - Imports: `import type` for type-only imports (bundler strips them).
 
