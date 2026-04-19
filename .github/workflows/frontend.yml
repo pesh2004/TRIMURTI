@@ -73,6 +73,8 @@ jobs:
       DATABASE_URL: postgres://trimurti:trimurti_dev_only@localhost:5432/trimurti?sslmode=disable
       REDIS_ADDR: localhost:6379
       SESSION_SECRET: ci_session_secret_not_for_prod_usage_32byteshex_aaaaaa
+      # Required by config.Load() in every env since Session-2 secret hygiene.
+      PII_ENCRYPTION_KEY: ci_pii_key_not_for_prod_usage_64hexchars_aaaaaaaaaaaaaaaaaaaaaaaa
       APP_ENV: development
       SEED_ADMIN_EMAIL: admin@trimurti.local
       SEED_ADMIN_PASSWORD: ci_admin_password_only_for_e2e

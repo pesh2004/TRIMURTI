@@ -45,6 +45,11 @@ jobs:
       DATABASE_URL: postgres://trimurti:trimurti_dev_only@localhost:5432/trimurti?sslmode=disable
       REDIS_ADDR: localhost:6379
       SESSION_SECRET: ci_session_secret_not_for_prod_usage_32byteshex_aaaaaa
+      # PII key is validated by config.Load() in every env — the test job
+      # runs migrate + seed + integration tests which all go through Load().
+      # Value is test-only; not in any example file; not considered a
+      # placeholder by the validator.
+      PII_ENCRYPTION_KEY: ci_pii_key_not_for_prod_usage_64hexchars_aaaaaaaaaaaaaaaaaaaaaaaa
       APP_ENV: development
     steps:
       - uses: actions/checkout@v4

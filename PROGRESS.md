@@ -150,10 +150,10 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 ### Session 2 — Secret hygiene
 
-- [ ] Remove `PII_ENCRYPTION_KEY` dev-fallback; fail-loud when unset regardless of `APP_ENV`
-- [ ] Deploy script refuses to start if any of `SESSION_SECRET` / `PII_ENCRYPTION_KEY` / admin password is missing or looks like a placeholder
-- [ ] Initial `SESSION_SECRET`, PII key, and seeded admin password rotated on the live droplet; prior values treated as leaked
-- [ ] `deploy/SECRETS.md` runbook documenting where each secret lives and how to rotate it
+- [x] `PII_ENCRYPTION_KEY` dev-fallback removed; `config.Load()` fail-loud on empty, placeholder, or ≤whitespace. Covered by `internal/config/config_test.go` including regression on the old fallback literal.
+- [x] Deploy script refuses to start if any of `POSTGRES_PASSWORD` / `REDIS_PASSWORD` / `SESSION_SECRET` / `PII_ENCRYPTION_KEY` is missing, matches a known placeholder, or is shorter than 32 chars (`deploy/preflight.sh`, runs as step 0/5 in `deploy/deploy.sh`)
+- [ ] Initial `SESSION_SECRET`, PII key, POSTGRES_PASSWORD, REDIS_PASSWORD, and seeded admin password rotated on the live droplet; prior values treated as leaked — **operator task, see `deploy/SECRETS.md`**
+- [x] `deploy/SECRETS.md` runbook — inventory, per-secret rotation procedure (PII has destructive-safe re-encrypt), incident-response playbook, incident log template
 
 ### Session 3 — User admin + password recovery
 

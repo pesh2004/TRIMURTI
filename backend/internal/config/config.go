@@ -67,19 +67,42 @@ func Load() (*Config, error) {
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
 	}
-	if c.SessionSecret == "" || c.SessionSecret == "CHANGE_ME_32_BYTES_HEX" {
-		if c.AppEnv != "development" {
-			return nil, fmt.Errorf("SESSION_SECRET must be set to a real value outside development")
-		}
+	if err := validateSecret("SESSION_SECRET", c.SessionSecret); err != nil {
+		return nil, err
 	}
-	if c.PIIEncryptionKey == "" {
-		if c.AppEnv != "development" {
-			return nil, fmt.Errorf("PII_ENCRYPTION_KEY is required in production (generate with: openssl rand -hex 32)")
-		}
-		// Dev default: deterministic but clearly non-prod.
-		c.PIIEncryptionKey = "dev-pii-key-do-not-use-in-production"
+	if err := validateSecret("PII_ENCRYPTION_KEY", c.PIIEncryptionKey); err != nil {
+		return nil, err
 	}
 	return c, nil
+}
+
+// placeholderSecrets is the set of values that ship in .env.example templates
+// or the old dev fallback — never valid at runtime in any environment. Kept
+// package-level so tests can assert against the same list.
+var placeholderSecrets = map[string]struct{}{
+	"CHANGE_ME":                            {},
+	"CHANGEME":                             {},
+	"changeme":                             {},
+	"CHANGE_ME_32_BYTES_HEX":               {},
+	"CHANGE_ME_openssl_rand_hex_32":        {},
+	"CHANGE_ME_strong_random_24_bytes":     {},
+	"dev-pii-key-do-not-use-in-production": {}, // the old fallback; refuse if it leaked into a real .env
+}
+
+// validateSecret enforces that production-critical secrets are (a) set and
+// (b) not one of the well-known template/placeholder values. Hard-fails in
+// every environment including development — we used to allow a dev fallback
+// for PII_ENCRYPTION_KEY, but the threat model (prod quietly inheriting a
+// known key if APP_ENV is wrong) was too big to leave in. Devs generate
+// their own key the same way prod does: `openssl rand -hex 32`.
+func validateSecret(name, value string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("%s is required — generate with `openssl rand -hex 32` and put it in .env", name)
+	}
+	if _, isPlaceholder := placeholderSecrets[value]; isPlaceholder {
+		return fmt.Errorf("%s looks like a placeholder (%q) — replace with a real secret before starting", name, value)
+	}
+	return nil
 }
 
 func (c *Config) IsProd() bool { return strings.EqualFold(c.AppEnv, "production") }

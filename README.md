@@ -55,7 +55,7 @@ go install github.com/securego/gosec/v2/cmd/gosec@latest
 ## Quick start
 
 ```bash
-cp .env.example .env                # fill in SESSION_SECRET (openssl rand -hex 32)
+cp .env.example .env                # fill in SESSION_SECRET + PII_ENCRYPTION_KEY (each via: openssl rand -hex 32)
 make up                             # start postgres + redis + mailhog
 make migrate                        # apply schema migrations
 make seed                           # create admin user + roles

@@ -21,26 +21,29 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+echo "==> [1/6] Preflight — validating .env before touching the stack"
+"$REPO_ROOT/deploy/preflight.sh"
+
 COMPOSE_ARGS=(-f deploy/docker-compose.prod.yml --env-file .env --project-directory .)
 
-echo "==> [1/5] Fetching latest main"
+echo "==> [2/6] Fetching latest main"
 git fetch origin
 git reset --hard origin/main
 
-echo "==> [2/5] Pulling base images + building"
+echo "==> [3/6] Pulling base images + building"
 docker compose "${COMPOSE_ARGS[@]}" pull --ignore-buildable || true
 docker compose "${COMPOSE_ARGS[@]}" build --pull
 
-echo "==> [3/5] Starting postgres + redis (if not running)"
+echo "==> [4/6] Starting postgres + redis (if not running)"
 docker compose "${COMPOSE_ARGS[@]}" up -d postgres redis
 
-echo "==> [4/5] Running migrations"
-# --build: tools profile is excluded from the step-2 `compose build`, so the
+echo "==> [5/6] Running migrations"
+# --build: tools profile is excluded from the step-3 `compose build`, so the
 # migrate image stays cached between deploys. Force a rebuild every run so
 # a new migration file actually gets picked up.
 docker compose "${COMPOSE_ARGS[@]}" --profile tools run --rm --build migrate
 
-echo "==> [5/5] Rolling backend + frontend + caddy"
+echo "==> [6/6] Rolling backend + frontend + caddy"
 docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans backend frontend caddy
 
 echo ""
