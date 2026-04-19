@@ -196,6 +196,6 @@ If none of those look right, the [Sandbox restore](#sandbox-restore-non-destruct
 Record every successful end-to-end restore test here. This is the evidence
 for "backups work, proven not theoretical".
 
-| Date (UTC)   | Operator | Dump restored           | Path     | Result | Notes |
-|--------------|----------|-------------------------|----------|--------|-------|
-| _TBD_        | _TBD_    | _pending first test_    | sandbox  | _TBD_  | Run before the first real customer data is loaded. |
+| Date (UTC)       | Operator | Dump restored                          | Path     | Result | Notes |
+|------------------|----------|----------------------------------------|----------|--------|-------|
+| 2026-04-19 07:10 | pesh2004 | `trimurti-20260419T071017Z.sql.gz`     | sandbox  | PASS   | First end-to-end sandbox restore on the live droplet. Row counts: 1 user / 3 employees / 23 audit rows. `broken_chain_rows = 0`. Session 1 data-safety proven not theoretical. |

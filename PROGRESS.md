@@ -143,10 +143,10 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 ### Session 1 — Data safety
 
-- [ ] `pg_dump` daily cron with 14-day retention on the droplet (`deploy/backup.sh`)
-- [ ] Restore runbook at `deploy/RESTORE.md` + restore tested against a fresh DB at least once (timestamped note in runbook)
-- [ ] Audit-log partition auto-rotation: SQL function `ensure_audit_log_partitions()` + annual cron (migration 0004)
-- [ ] Off-box backup shipment to DO Spaces / S3 — **blocked on operator providing credentials**
+- [x] `pg_dump` daily cron with 14-day retention on the droplet (`deploy/backup.sh`) — installed 2026-04-19, integrity check (`gunzip -t` + `CREATE TABLE` guard) proven on first run
+- [x] Restore runbook at `deploy/RESTORE.md` + restore tested against a fresh DB — sandbox restore passed 2026-04-19 07:10 UTC; audit hash chain verified (0 broken rows). See `deploy/RESTORE.md#test-log`.
+- [x] Audit-log partition auto-rotation: SQL function `ensure_audit_log_partitions()` (migration 0004) + weekly cron in `deploy/backup.cron`; partitions seeded 2026–2030 at migrate time
+- [ ] Off-box backup shipment to DO Spaces / S3 — **blocked on operator providing `SPACES_ACCESS_KEY` / `SPACES_SECRET_KEY` / `SPACES_BUCKET` / `SPACES_ENDPOINT` in `.env`**; the upload branch in `backup.sh` is code-complete and skips cleanly until credentials exist
 
 ### Session 2 — Secret hygiene
 
