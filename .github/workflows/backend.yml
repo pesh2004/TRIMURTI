@@ -80,7 +80,7 @@ jobs:
           cache-dependency-path: backend/go.sum
       # v7+ defaults to golangci-lint v2.x (v6 pins v1.64.x which was built
       # with Go 1.24 and refuses a go.mod that targets Go 1.25+).
-      - uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           working-directory: backend
