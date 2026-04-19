@@ -2,10 +2,16 @@
 #   sudo cp deploy/backup.cron /etc/cron.d/trimurti-backup
 #   sudo chmod 644 /etc/cron.d/trimurti-backup
 #
-# Runs nightly at 02:05 Bangkok time. Writes stdout + stderr to /var/log/trimurti-backup.log.
+# - Nightly 02:05 Bangkok time: pg_dump + rotate + (optional) Spaces upload.
+# - Weekly Sunday 03:00 Bangkok time: ensure audit_log partitions exist for
+#   the current year + next two. A missed run is safe — migration 0004
+#   forward-seeded five years.
+# All output goes to /var/log/trimurti-backup.log.
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TZ=Asia/Bangkok
 
 5 2 * * * trimurti cd /srv/trimurti && /srv/trimurti/deploy/backup.sh >> /var/log/trimurti-backup.log 2>&1
+
+0 3 * * 0 trimurti cd /srv/trimurti && set -a && . /srv/trimurti/.env && set +a && docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" trimurti-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT ensure_audit_log_partitions();" >> /var/log/trimurti-backup.log 2>&1

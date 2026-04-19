@@ -31,7 +31,18 @@ if [[ "$SIZE" -lt 1024 ]]; then
   echo "ERROR: dump file suspiciously small ($SIZE bytes)" >&2
   exit 1
 fi
-echo "  wrote $LOCAL_DIR/$FILE ($SIZE bytes)"
+# Integrity: gzip itself must decompress cleanly, and the dump must contain
+# at least one CREATE TABLE statement. Catches cases where pg_dump errored
+# mid-write but still produced a non-empty gzip file.
+if ! gunzip -t "$LOCAL_DIR/$FILE"; then
+  echo "ERROR: gunzip integrity check failed" >&2
+  exit 1
+fi
+if ! gunzip -c "$LOCAL_DIR/$FILE" | grep -q '^CREATE TABLE'; then
+  echo "ERROR: dump contains no CREATE TABLE — likely truncated" >&2
+  exit 1
+fi
+echo "  wrote $LOCAL_DIR/$FILE ($SIZE bytes, integrity ok)"
 
 # ---- Upload to DO Spaces (via dockerised aws-cli — no host install needed) ----
 if [[ -n "${SPACES_ACCESS_KEY:-}" && -n "${SPACES_SECRET_KEY:-}" ]]; then

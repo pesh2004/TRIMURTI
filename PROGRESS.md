@@ -134,6 +134,50 @@ Cost side: PR → RFQ → PO → GRN → 3-Way → AP.
 
 ---
 
+## Operations readiness — test-server production
+
+Module features are not enough to put real customer data on the server.
+This track covers the infrastructure + operational guarantees that make
+the deployment safe. **No real data until every item below is `[x]`**
+(or explicitly deferred with a written reason).
+
+### Session 1 — Data safety
+
+- [ ] `pg_dump` daily cron with 14-day retention on the droplet (`deploy/backup.sh`)
+- [ ] Restore runbook at `deploy/RESTORE.md` + restore tested against a fresh DB at least once (timestamped note in runbook)
+- [ ] Audit-log partition auto-rotation: SQL function `ensure_audit_log_partitions()` + annual cron (migration 0004)
+- [ ] Off-box backup shipment to DO Spaces / S3 — **blocked on operator providing credentials**
+
+### Session 2 — Secret hygiene
+
+- [ ] Remove `PII_ENCRYPTION_KEY` dev-fallback; fail-loud when unset regardless of `APP_ENV`
+- [ ] Deploy script refuses to start if any of `SESSION_SECRET` / `PII_ENCRYPTION_KEY` / admin password is missing or looks like a placeholder
+- [ ] Initial `SESSION_SECRET`, PII key, and seeded admin password rotated on the live droplet; prior values treated as leaked
+- [ ] `deploy/SECRETS.md` runbook documenting where each secret lives and how to rotate it
+
+### Session 3 — User admin + password recovery
+
+- [ ] Password-reset flow (email token, single-use, 15-min TTL)
+- [ ] Minimal `gov_rbac` UI: admin creates users + assigns roles (no styling polish required)
+- [ ] "Forgot password?" link on `/login`
+- [ ] SMTP wired to a real provider in prod (Mailhog stays in dev) — **requires operator to provide SMTP credentials**
+
+### Session 4 — CSRF + rate-limit hardening
+
+- [ ] CSRF token middleware enforced on every mutation endpoint
+- [ ] Rate limiter covers sensitive non-login endpoints (password reset request, PII reveal, terminate)
+- [ ] Per-user (not just per-IP) rate-limit bucket
+
+### Session 5 — Ops basics
+
+- [ ] `/healthz` verifies the DB + Redis connections (currently only returns "ok" from the process)
+- [ ] Uptime monitor wired (UptimeRobot or similar) with email alert on `/healthz` fail
+- [ ] PDPA self-export endpoint: authenticated user can download their own data as JSON
+- [ ] Log access path documented (`deploy/OPS.md`)
+- [ ] TLS cert renewal force-tested — next renewal date recorded
+
+---
+
 ## Conventions for checking off a module
 
 A module is **done** (`[x]`) only when **all** of these are true:

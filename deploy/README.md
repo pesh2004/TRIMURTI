@@ -131,7 +131,24 @@ sudo chown trimurti:trimurti /var/log/trimurti-backup.log
 sudo -u trimurti /srv/trimurti/deploy/backup.sh
 ```
 
-### 7. Visit the site
+The cron file installs two jobs:
+
+- **02:05 nightly** — `pg_dump` → gzip → integrity-check → `/srv/trimurti-backups/` → (optional) upload to DO Spaces if `SPACES_ACCESS_KEY` is set in `.env`.
+- **03:00 Sunday** — `SELECT ensure_audit_log_partitions()` so `audit_log` always has a partition for the current year + the next two. Harmless if it runs twice; the function is idempotent.
+
+### 7. Prove the restore actually works
+
+**Do this before loading real customer data.** A backup you've never restored
+is not a backup.
+
+Follow [`deploy/RESTORE.md`](RESTORE.md) → "Sandbox restore" section. It
+creates a temporary `trimurti_sandbox` database, decompresses the latest
+dump into it, verifies the audit-log hash chain is intact, then drops the
+sandbox. Takes ~1 minute and touches nothing in prod.
+
+When it passes, log the date in the test log at the bottom of `RESTORE.md`.
+
+### 8. Visit the site
 
 - `https://<IP>.sslip.io` → login page
 - Log in with the seeded admin email + generated password
@@ -146,7 +163,8 @@ sudo -u trimurti /srv/trimurti/deploy/backup.sh
 | Rollback one migration | `docker compose -f deploy/docker-compose.prod.yml --env-file .env --profile tools run --rm migrate down 1` |
 | Psql shell | `docker exec -it trimurti-postgres psql -U trimurti -d trimurti` |
 | Redis CLI | `docker exec -it trimurti-redis redis-cli -a "$REDIS_PASSWORD"` |
-| Restore backup | `gunzip -c trimurti-YYYY….sql.gz \| docker exec -i trimurti-postgres psql -U trimurti -d trimurti` |
+| Restore backup | See [`RESTORE.md`](RESTORE.md) — the sandbox path for sanity checks, full-restore for disaster recovery. Do **not** pipe a dump into the live DB without the destructive-restore checklist. |
+| Verify backup health | [`RESTORE.md#verify-the-nightly-backup-is-actually-running`](RESTORE.md#verify-the-nightly-backup-is-actually-running) — run weekly. |
 
 ## Auto-deploy from GitHub
 

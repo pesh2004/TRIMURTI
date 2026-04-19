@@ -178,6 +178,28 @@ export const features: Feature[] = [
       'Post-deploy health check before marking success',
     ],
   },
+  {
+    id: 'platform.data_safety',
+    category: 'platform',
+    status: 'live',
+    since: 'Phase 0 (Ops 1)',
+    title_th: 'ข้อมูลปลอดภัย — backup + restore ที่พิสูจน์แล้ว',
+    title_en: 'Data safety — proven backup + restore',
+    summary_th:
+      'Backup อัตโนมัติทุกคืน เก็บ 14 วัน + ส่งไป off-server; มี restore runbook ทดสอบจริงก่อนเริ่มใช้งาน; Audit log partition ต่ออายุอัตโนมัติ — ไม่มีวันที่ระบบตายกลางปีเพราะ partition หมด',
+    summary_en:
+      'Nightly pg_dump with 14-day local retention plus off-box upload; a tested restore runbook lives next to the backup script; audit-log partitions auto-roll so the system never breaks at a year boundary.',
+    highlights_th: [
+      'Integrity check ของ dump ก่อน rotate (gunzip -t + CREATE TABLE guard)',
+      'Sandbox restore path — ตรวจ hash chain ของ audit log ทุกสัปดาห์ได้โดยไม่แตะ prod',
+      'Disaster recovery: ย้ายไป droplet ใหม่ได้ ถ้ามี `.env` + dump',
+    ],
+    highlights_en: [
+      'Dump integrity verified before rotation (gunzip -t + CREATE TABLE guard)',
+      'Sandbox-restore path lets weekly checks prove the audit hash chain without touching prod',
+      'Disaster recovery: spin up a fresh droplet, restore from Spaces, live again in minutes',
+    ],
+  },
 
   // ---------- Roadmap ----------
   {
