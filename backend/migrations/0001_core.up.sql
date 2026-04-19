@@ -3,6 +3,15 @@
 
 BEGIN;
 
+-- Postgres extensions this migration depends on.
+-- The docker-compose stack bootstraps these via infra/postgres/init/,
+-- but CI / fresh databases / replicas rebuilt from scratch won't have
+-- the init script — so the migration stays self-contained.
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "citext";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
 -- ---------- USERS ----------
 CREATE TABLE users (
     id             BIGSERIAL PRIMARY KEY,
