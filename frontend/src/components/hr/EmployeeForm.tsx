@@ -13,6 +13,7 @@ import {
   type UpdateEmployeeRequest,
 } from '@/lib/api/hr'
 import { useAuth } from '@/lib/auth'
+import { useToast } from './Toast'
 
 type FormState = {
   company_id: number
@@ -106,9 +107,17 @@ export function EmployeeForm({
 }) {
   const { t } = useTranslation()
   const { hasPermission } = useAuth()
+  const toast = useToast()
   const qc = useQueryClient()
   const isEditing = editingId != null
   const canReveal = hasPermission('hr_employees.reveal_pii')
+
+  const revealNidWithAudit = (next: boolean, code: string) => {
+    if (next) toast.push(lang === 'th' ? `audit: เปิดดูเลขบัตรของ ${code || 'พนักงานใหม่'}` : `Audit: NID of ${code || 'new employee'} revealed`)
+  }
+  const revealSalaryWithAudit = (next: boolean, code: string) => {
+    if (next) toast.push(lang === 'th' ? `audit: เปิดดูเงินเดือนของ ${code || 'พนักงานใหม่'}` : `Audit: salary of ${code || 'new employee'} revealed`)
+  }
 
   const companiesQ = useQuery({ queryKey: ['hr', 'companies'], queryFn: () => hrApi.listCompanies(), staleTime: 60_000 })
   const positionsQ = useQuery({ queryKey: ['hr', 'positions'], queryFn: () => hrApi.listPositions(), staleTime: 60_000 })
@@ -405,7 +414,12 @@ export function EmployeeForm({
                     <button
                       type="button"
                       className="sens-btn"
-                      onClick={() => setShowNid((v) => !v)}
+                      onClick={() => {
+                        setShowNid((v) => {
+                          revealNidWithAudit(!v, editQ.data?.employee_code ?? '')
+                          return !v
+                        })
+                      }}
                       disabled={!canReveal}
                       title={canReveal ? '' : 'Requires reveal_pii permission'}
                     >
@@ -591,7 +605,12 @@ export function EmployeeForm({
                   <button
                     type="button"
                     className="sens-btn"
-                    onClick={() => setShowSalary((v) => !v)}
+                    onClick={() => {
+                      setShowSalary((v) => {
+                        revealSalaryWithAudit(!v, editQ.data?.employee_code ?? '')
+                        return !v
+                      })
+                    }}
                     disabled={!canReveal}
                   >
                     {showSalary ? Icons.eyeOff(13) : Icons.eye(13)}

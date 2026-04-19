@@ -7,6 +7,7 @@ import { StatusPill } from './pills'
 import { hrApi, type Employee, type EmployeeStatus } from '@/lib/api/hr'
 import { fmtDate, fmtDateLong, fmtMoney, fmtNid, maskNid, tenureYears } from '@/lib/hr/format'
 import { useAuth } from '@/lib/auth'
+import { useToast } from './Toast'
 
 type Tab = 'overview' | 'history' | 'documents' | 'notes'
 
@@ -23,6 +24,7 @@ export function EmployeeDrawer({
 }) {
   const { t } = useTranslation()
   const { hasPermission } = useAuth()
+  const toast = useToast()
   const qc = useQueryClient()
   const canReveal = hasPermission('hr_employees.reveal_pii')
   const canTerminate = hasPermission('hr_employees.terminate')
@@ -31,6 +33,17 @@ export function EmployeeDrawer({
   const [showNid, setShowNid] = useState(false)
   const [showSalary, setShowSalary] = useState(false)
   const [terminating, setTerminating] = useState(false)
+
+  const revealNid = () => {
+    const next = !showNid
+    setShowNid(next)
+    if (next) toast.push(lang === 'th' ? `audit: เปิดดูเลขบัตรของ ${empQ.data?.employee_code ?? ''}` : `Audit: NID of ${empQ.data?.employee_code ?? ''} revealed`)
+  }
+  const revealSalary = () => {
+    const next = !showSalary
+    setShowSalary(next)
+    if (next) toast.push(lang === 'th' ? `audit: เปิดดูเงินเดือนของ ${empQ.data?.employee_code ?? ''}` : `Audit: salary of ${empQ.data?.employee_code ?? ''} revealed`)
+  }
 
   const empQ = useQuery({
     queryKey: ['hr', 'employee', employeeId],
@@ -143,8 +156,8 @@ export function EmployeeDrawer({
                   showNid={showNid}
                   showSalary={showSalary}
                   canReveal={canReveal}
-                  onToggleNid={() => setShowNid((v) => !v)}
-                  onToggleSalary={() => setShowSalary((v) => !v)}
+                  onToggleNid={revealNid}
+                  onToggleSalary={revealSalary}
                 />
               )}
               {tab === 'history' && <HistoryTab emp={emp} lang={lang} />}

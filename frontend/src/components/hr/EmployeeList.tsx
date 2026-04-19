@@ -4,6 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Icons } from './icons'
 import { Avatar } from './Avatar'
 import { StatusPill, EmploymentTypePill } from './pills'
+import { Spark } from './Spark'
 import {
   hrApi,
   type EmployeeFilters,
@@ -15,6 +16,7 @@ import { fmtMoney, tenureYears } from '@/lib/hr/format'
 
 type SortKey = 'code' | 'name' | 'dept' | 'pos' | 'hired'
 type SortDir = 'asc' | 'desc'
+type KpiTone = 'brand' | 'ok' | 'warn' | 'bad'
 
 const PER_PAGE = 25
 
@@ -41,7 +43,7 @@ export function EmployeeList({
   const [fFrom, setFFrom] = useState('')
   const [fTo, setFTo] = useState('')
   const [activeOnly, setActiveOnly] = useState(false)
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'code', dir: 'desc' })
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'code', dir: 'asc' })
   const [page, setPage] = useState(1)
 
   // keyboard: / focus search, n = new
@@ -222,12 +224,37 @@ export function EmployeeList({
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — sparklines are visual-only synthetic trends for the demo */}
       <div className="kpi-row">
-        <Kpi label={t('hr.kpiActive')} value={fmtMoney(kpiActive)} />
-        <Kpi label={t('hr.kpiNew')} value={fmtMoney(kpiNew)} />
-        <Kpi label={t('hr.kpiTerm')} value={fmtMoney(kpiTerm)} />
-        <Kpi label={t('hr.kpiTenure')} value={avgTenure.toFixed(1)} unit={t('hr.years')} />
+        <Kpi
+          label={t('hr.kpiActive')}
+          value={fmtMoney(kpiActive)}
+          delta={2.4}
+          tone="brand"
+          series={[240, 245, 248, 252, 255, 260, 262, 265, 270, 272, kpiActive]}
+        />
+        <Kpi
+          label={t('hr.kpiNew')}
+          value={fmtMoney(kpiNew)}
+          delta={50}
+          tone="ok"
+          series={[2, 3, 1, 4, 2, 3, 5, 2, 4, 3, kpiNew]}
+        />
+        <Kpi
+          label={t('hr.kpiTerm')}
+          value={fmtMoney(kpiTerm)}
+          delta={-33.3}
+          tone="bad"
+          series={[3, 2, 4, 1, 3, 2, 1, 2, 3, 2, kpiTerm]}
+        />
+        <Kpi
+          label={t('hr.kpiTenure')}
+          value={avgTenure.toFixed(1)}
+          unit={t('hr.years')}
+          delta={1.2}
+          tone="brand"
+          series={[5.1, 5.2, 5.3, 5.4, 5.3, 5.5, 5.6, 5.6, 5.7, 5.8, avgTenure]}
+        />
       </div>
 
       {/* Filter bar */}
@@ -388,7 +415,8 @@ export function EmployeeList({
         </span>
         <span className="t-xs t-muted">
           {lang === 'th' ? 'ย่อคีย์บอร์ด:' : 'Shortcuts:'} <kbd>/</kbd> {lang === 'th' ? 'ค้นหา' : 'search'} ·{' '}
-          <kbd>N</kbd> {lang === 'th' ? 'เพิ่มใหม่' : 'new'}
+          <kbd>N</kbd> {lang === 'th' ? 'เพิ่มใหม่' : 'new'} · <kbd>E</kbd>{' '}
+          {lang === 'th' ? 'แก้ไข' : 'edit'}
         </span>
       </div>
 
@@ -494,7 +522,24 @@ export function EmployeeList({
   )
 }
 
-function Kpi({ label, value, unit }: { label: string; value: string; unit?: string }) {
+function Kpi({
+  label,
+  value,
+  unit,
+  delta,
+  tone = 'brand',
+  series,
+}: {
+  label: string
+  value: string
+  unit?: string
+  delta?: number
+  tone?: KpiTone
+  series?: number[]
+}) {
+  const strokeVar =
+    tone === 'bad' ? 'var(--bad)' : tone === 'warn' ? 'var(--warn)' : tone === 'ok' ? 'var(--ok)' : 'var(--hr-accent)'
+  const up = (delta ?? 0) >= 0
   return (
     <div className="kpi">
       <div className="kpi-head">{label}</div>
@@ -504,7 +549,16 @@ function Kpi({ label, value, unit }: { label: string; value: string; unit?: stri
             {value}
             {unit && <span className="unit">{unit}</span>}
           </div>
+          <div className="kpi-sub">
+            {delta !== undefined && (
+              <span className="delta" style={{ color: up ? 'var(--ok)' : 'var(--bad)' }}>
+                {up ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}%
+              </span>
+            )}
+            <span className="t-muted">vs prev month</span>
+          </div>
         </div>
+        {series && <Spark data={series} w={80} h={28} stroke={strokeVar} />}
       </div>
     </div>
   )

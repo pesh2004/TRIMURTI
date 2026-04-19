@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
+import { ToastHost } from '@/components/hr/Toast'
 
 export function AppLayout() {
   const { user, loading } = useAuth()
@@ -24,12 +25,14 @@ export function AppLayout() {
   if (!user) return null
 
   return (
-    <div className="app">
-      <Sidebar />
-      <Topbar />
-      <main className="main">
-        <Outlet />
-      </main>
-    </div>
+    <ToastHost>
+      <div className="app">
+        <Sidebar />
+        <Topbar />
+        <main className="main">
+          <Outlet />
+        </main>
+      </div>
+    </ToastHost>
   )
 }
