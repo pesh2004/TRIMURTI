@@ -60,6 +60,14 @@ func (h *Handler) Register(g *echo.Group) {
 	// Both paths run the same deep check. /readyz stays as a k8s-style
 	// alias so anything that currently polls it (if added later) still
 	// works without a rename.
+	//
+	// HEAD is registered alongside GET so uptime-monitoring tools (which
+	// default to HEAD because it's cheaper — no body transferred) work
+	// without forcing the operator onto a paid tier that lets them
+	// switch the probe method. Go's net/http discards the body on HEAD
+	// responses automatically, so the handler logic stays identical.
 	g.GET("/healthz", h.Check)
+	g.HEAD("/healthz", h.Check)
 	g.GET("/readyz", h.Check)
+	g.HEAD("/readyz", h.Check)
 }
