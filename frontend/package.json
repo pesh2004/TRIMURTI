@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",
@@ -31,6 +33,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

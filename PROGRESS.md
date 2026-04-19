@@ -17,7 +17,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done · `[!]` blocked
 - [x] CI — GitHub Actions (backend, frontend, security, deploy) + Dependabot
 - [x] Production deploy — live at https://168.144.32.187.sslip.io (DO droplet, Caddy auto-HTTPS)
 - [x] Auto-deploy CI/CD — `.github/workflows/deploy.yml` with SSH deploy key
-- [ ] E2E smoke test — Playwright wiring + one login-to-app-shell path (deferred; no `frontend/e2e/` yet)
+- [x] E2E smoke test — Playwright wiring + login→app-shell path in `frontend/e2e/smoke.spec.ts`, runs against real backend in CI `e2e` job
 
 ## Phase 1 — Core workspace (6 modules)
 

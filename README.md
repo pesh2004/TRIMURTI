@@ -65,6 +65,22 @@ make dev                            # backend :8080  ·  frontend :5173
 
 Open http://localhost:5173 and log in with the seeded admin (see output of `make seed`).
 
+### E2E smoke test
+
+With the stack running (`make dev`) and a known admin password exported,
+run the Playwright smoke from `frontend/`:
+
+```bash
+cd frontend
+npx playwright install --with-deps chromium      # one-time
+E2E_ADMIN_EMAIL=admin@trimurti.local \
+E2E_ADMIN_PASSWORD=<the password from make seed> \
+npm run e2e
+```
+
+CI runs this automatically on every push that touches `frontend/` or
+`backend/` via the `e2e` job in `.github/workflows/frontend.yml`.
+
 ## Development workflow
 
 1. Pick a module from [PROGRESS.md](PROGRESS.md) (top of the checklist).
