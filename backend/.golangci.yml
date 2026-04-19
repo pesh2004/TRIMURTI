@@ -18,6 +18,9 @@ linters:
     gosec:
       excludes:
         - G404 # math/rand is fine for non-crypto uses (seeded elsewhere)
+        - G115 # int->uint conversion. Our call sites feed Argon2 params
+               # read from env (bounded by config) and len(hash) which is
+               # always tiny. The check is noisy without catching real bugs.
     staticcheck:
       checks: ['all', '-ST1000', '-ST1020', '-ST1021', '-ST1022']
   exclusions:

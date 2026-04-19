@@ -21,7 +21,7 @@ func TestVerifyInvalidHash(t *testing.T) {
 	for _, bad := range []string{
 		"",
 		"not-a-hash",
-		"$argon2i$v=19$m=65536,t=3,p=4$AAAA$BBBB", // wrong algo
+		"$argon2i$v=19$m=65536,t=3,p=4$AAAA$BBBB",  // wrong algo
 		"$argon2id$v=99$m=65536,t=3,p=4$AAAA$BBBB", // wrong version
 	} {
 		if err := Verify("x", bad); err == nil {

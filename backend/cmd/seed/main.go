@@ -19,9 +19,9 @@ import (
 )
 
 type roleDef struct {
-	Code    string
-	NameEN  string
-	NameTH  string
+	Code        string
+	NameEN      string
+	NameTH      string
 	Permissions []string // permission codes granted to this role
 }
 

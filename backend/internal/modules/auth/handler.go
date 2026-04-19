@@ -64,13 +64,13 @@ func (h *Handler) Login(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	var (
-		userID        int64
-		passwordHash  string
-		displayName   string
-		username      string
-		isActive      bool
-		lockedUntil   *time.Time
-		failedLogins  int
+		userID       int64
+		passwordHash string
+		displayName  string
+		username     string
+		isActive     bool
+		lockedUntil  *time.Time
+		failedLogins int
 	)
 	err := h.pool.QueryRow(ctx, `
 		SELECT id, password_hash, display_name, username, is_active, locked_until, failed_login_attempts
