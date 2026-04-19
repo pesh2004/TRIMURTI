@@ -112,9 +112,6 @@ export function EmployeeForm({
   const isEditing = editingId != null
   const canReveal = hasPermission('hr_employees.reveal_pii')
 
-  const revealNidWithAudit = (next: boolean, code: string) => {
-    if (next) toast.push(lang === 'th' ? `audit: เปิดดูเลขบัตรของ ${code || 'พนักงานใหม่'}` : `Audit: NID of ${code || 'new employee'} revealed`)
-  }
   const revealSalaryWithAudit = (next: boolean, code: string) => {
     if (next) toast.push(lang === 'th' ? `audit: เปิดดูเงินเดือนของ ${code || 'พนักงานใหม่'}` : `Audit: salary of ${code || 'new employee'} revealed`)
   }
@@ -129,7 +126,6 @@ export function EmployeeForm({
 
   const [form, setForm] = useState<FormState>(emptyForm)
   const [open, setOpen] = useState({ personal: true, contact: true, employment: true, compensation: true })
-  const [showNid, setShowNid] = useState(false)
   const [showSalary, setShowSalary] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({})
@@ -239,6 +235,7 @@ export function EmployeeForm({
           first_name_en: form.first_name_en || undefined,
           last_name_en: form.last_name_en || undefined,
           nickname: form.nickname || undefined,
+          national_id: form.national_id || undefined,
           phone: form.phone || undefined,
           email: form.email || undefined,
           address,
@@ -398,36 +395,19 @@ export function EmployeeForm({
                   onChange={(e) => set('birthdate', e.target.value)}
                 />
               </Field>
-              <Field label={t('hr.nid')} error={errOf('national_id')} col={2}>
-                <div className="input-sens">
-                  <input
-                    className={`input ${errOf('national_id') ? 'err' : ''}`}
-                    type={showNid || !isEditing ? 'text' : 'password'}
-                    value={form.national_id}
-                    maxLength={13}
-                    placeholder="1234567890123"
-                    onBlur={() => setTouched((t) => ({ ...t, national_id: true }))}
-                    onChange={(e) => set('national_id', e.target.value.replace(/\D/g, ''))}
-                    disabled={isEditing && !showNid && !canReveal}
-                  />
-                  {isEditing && (
-                    <button
-                      type="button"
-                      className="sens-btn"
-                      onClick={() => {
-                        setShowNid((v) => {
-                          revealNidWithAudit(!v, editQ.data?.employee_code ?? '')
-                          return !v
-                        })
-                      }}
-                      disabled={!canReveal}
-                      title={canReveal ? '' : 'Requires reveal_pii permission'}
-                    >
-                      {showNid ? Icons.eyeOff(13) : Icons.eye(13)}
-                      <span>{showNid ? t('hr.hide') : t('hr.reveal')}</span>
-                    </button>
-                  )}
-                </div>
+              <Field label={t('hr.nid')} error={errOf('national_id')} col={2}
+                     hint={!canReveal ? (lang === 'th' ? 'ต้องมีสิทธิ์ HR' : 'HR role required') : undefined}>
+                <input
+                  className={`input ${errOf('national_id') ? 'err' : ''}`}
+                  type="text"
+                  inputMode="numeric"
+                  value={form.national_id}
+                  maxLength={13}
+                  placeholder="1234567890123"
+                  onBlur={() => setTouched((t) => ({ ...t, national_id: true }))}
+                  onChange={(e) => set('national_id', e.target.value.replace(/\D/g, ''))}
+                  disabled={!canReveal}
+                />
               </Field>
             </div>
           </Section>

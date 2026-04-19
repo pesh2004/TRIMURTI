@@ -337,6 +337,9 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 	if req.Nickname != nil {
 		add("nickname", *req.Nickname)
 	}
+	if req.NationalID != nil {
+		addEncrypted("national_id", *req.NationalID)
+	}
 	if req.Phone != nil {
 		add("phone", *req.Phone)
 	}
