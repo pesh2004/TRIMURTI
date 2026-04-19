@@ -13,6 +13,10 @@
     "invalid": "Invalid email or password",
     "locked": "Account temporarily locked. Try again in 15 minutes."
   },
+  "features": {
+    "title": "What TRIMURTI can do today",
+    "subtitle": "A short, customer-facing overview of everything the system delivers right now plus what's on the roadmap. Updated by the engineering team on every release."
+  },
   "nav": {
     "dashboard": "Dashboard",
     "settings": "Settings",

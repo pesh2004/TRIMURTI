@@ -85,7 +85,8 @@ design/
     - Frontend: component tests in `*.test.tsx` (Vitest + RTL), one E2E path in `frontend/e2e/<module_id>.spec.ts` (Playwright).
 13. **Docs:** short `backend/internal/modules/<module_id>/README.md` — what it does, table names, permissions.
 14. **Tick the box** in `PROGRESS.md` in the same commit.
-15. **PR** — CI must be green before merge.
+15. **Update the customer-facing feature catalog** at `frontend/src/lib/features/catalog.ts` — either flip an existing entry from `planned` → `live`, or add a new entry. Content is customer-facing (no internal jargon; sales uses the `/features` page live off main).
+16. **PR** — CI must be green before merge.
 
 ## Non-negotiables
 

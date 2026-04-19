@@ -5,6 +5,7 @@ import { AppLayout } from '@/routes/app-layout'
 import { DashboardPage } from '@/routes/dashboard'
 import { SettingsPage } from '@/routes/settings'
 import { HrEmployeesPage } from '@/routes/hr-employees'
+import { FeaturesPage } from '@/routes/features'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -40,9 +41,15 @@ const hrEmployeesRoute = createRoute({
   component: HrEmployeesPage,
 })
 
+const featuresRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/features',
+  component: FeaturesPage,
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appLayoutRoute.addChildren([dashboardRoute, settingsRoute, hrEmployeesRoute]),
+  appLayoutRoute.addChildren([dashboardRoute, settingsRoute, hrEmployeesRoute, featuresRoute]),
 ])
 
 export const router = createRouter({ routeTree })

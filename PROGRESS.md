@@ -146,4 +146,5 @@ A module is **done** (`[x]`) only when **all** of these are true:
 6. RBAC: permissions declared in `gov_rbac` and enforced via middleware.
 7. Audit: every mutation calls `audit.Write`.
 8. Docs: module-specific README in `backend/internal/modules/<id>/README.md`.
-9. Merged to `main`, CI green.
+9. Customer-facing catalog entry added/flipped to `live` in `frontend/src/lib/features/catalog.ts` so the `/features` page shown to sales + stakeholders is truthful.
+10. Merged to `main`, CI green.

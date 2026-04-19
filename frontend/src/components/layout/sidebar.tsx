@@ -40,6 +40,7 @@ export function Sidebar() {
         en: 'Workspace',
         items: [
           { id: 'dashboard', to: '/', th: 'แดชบอร์ด', en: 'Dashboard', icon: Icons.building(14) },
+          { id: 'features', to: '/features', th: 'ฟีเจอร์ที่รองรับ', en: 'Features', icon: Icons.info(14) },
         ],
       },
       {
