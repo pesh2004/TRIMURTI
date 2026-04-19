@@ -146,7 +146,7 @@ the deployment safe. **No real data until every item below is `[x]`**
 - [x] `pg_dump` daily cron with 14-day retention on the droplet (`deploy/backup.sh`) — installed 2026-04-19, integrity check (`gunzip -t` + `CREATE TABLE` guard) proven on first run
 - [x] Restore runbook at `deploy/RESTORE.md` + restore tested against a fresh DB — sandbox restore passed 2026-04-19 07:10 UTC; audit hash chain verified (0 broken rows). See `deploy/RESTORE.md#test-log`.
 - [x] Audit-log partition auto-rotation: SQL function `ensure_audit_log_partitions()` (migration 0004) + weekly cron in `deploy/backup.cron`; partitions seeded 2026–2030 at migrate time
-- [ ] Off-box backup shipment to DO Spaces / S3 — **blocked on operator providing `SPACES_ACCESS_KEY` / `SPACES_SECRET_KEY` / `SPACES_BUCKET` / `SPACES_ENDPOINT` in `.env`**; the upload branch in `backup.sh` is code-complete and skips cleanly until credentials exist
+- [x] Off-box backup shipment to DO Spaces (sgp1) — proven 2026-04-19 07:18 UTC: `trimurti-20260419T071752Z.sql.gz` uploaded to `s3://skgrp/db/`. Lifecycle policy expires `db/` objects after 90 days.
 
 ### Session 2 — Secret hygiene
 
