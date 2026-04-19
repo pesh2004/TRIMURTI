@@ -235,6 +235,8 @@ export function EmployeeForm({
           first_name_en: form.first_name_en || undefined,
           last_name_en: form.last_name_en || undefined,
           nickname: form.nickname || undefined,
+          gender: form.gender,
+          birthdate: form.birthdate,
           national_id: form.national_id || undefined,
           phone: form.phone || undefined,
           email: form.email || undefined,
@@ -575,27 +577,31 @@ export function EmployeeForm({
                   <input
                     className="input"
                     style={{ textAlign: 'right' }}
-                    type={showSalary && canReveal ? 'text' : 'password'}
+                    // On create: plain input (no existing value to protect).
+                    // On edit: masked until the user explicitly reveals.
+                    type={!isEditing || (showSalary && canReveal) ? 'text' : 'password'}
                     inputMode="decimal"
-                    value={canReveal && showSalary ? form.salary : '•••••••'}
-                    disabled={!canReveal || !showSalary}
+                    value={!isEditing ? form.salary : canReveal && showSalary ? form.salary : '•••••••'}
+                    disabled={isEditing && (!canReveal || !showSalary)}
                     onChange={(e) => set('salary', e.target.value)}
                   />
                   <span className="suffix t-xs">THB/{form.employment_type === 'daily' ? 'day' : 'month'}</span>
-                  <button
-                    type="button"
-                    className="sens-btn"
-                    onClick={() => {
-                      setShowSalary((v) => {
-                        revealSalaryWithAudit(!v, editQ.data?.employee_code ?? '')
-                        return !v
-                      })
-                    }}
-                    disabled={!canReveal}
-                  >
-                    {showSalary ? Icons.eyeOff(13) : Icons.eye(13)}
-                    <span>{showSalary ? t('hr.hide') : t('hr.reveal')}</span>
-                  </button>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      className="sens-btn"
+                      onClick={() => {
+                        setShowSalary((v) => {
+                          revealSalaryWithAudit(!v, editQ.data?.employee_code ?? '')
+                          return !v
+                        })
+                      }}
+                      disabled={!canReveal}
+                    >
+                      {showSalary ? Icons.eyeOff(13) : Icons.eye(13)}
+                      <span>{showSalary ? t('hr.hide') : t('hr.reveal')}</span>
+                    </button>
+                  )}
                 </div>
                 <div className="t-xs t-muted" style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
                   {Icons.info(11)}

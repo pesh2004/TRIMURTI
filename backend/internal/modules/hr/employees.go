@@ -337,6 +337,16 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 	if req.Nickname != nil {
 		add("nickname", *req.Nickname)
 	}
+	if req.Gender != nil {
+		add("gender", *req.Gender)
+	}
+	if req.Birthdate != nil {
+		bd, err := parseDate(*req.Birthdate)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "birthdate: "+err.Error())
+		}
+		add("birthdate", bd)
+	}
 	if req.NationalID != nil {
 		addEncrypted("national_id", *req.NationalID)
 	}
@@ -361,6 +371,12 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 	}
 	if req.Status != nil {
 		add("status", *req.Status)
+		// If the row is currently terminated and the client is moving it back
+		// to an active state (validator already rejects 'terminated' here), drop
+		// the termination metadata so the record stays internally consistent.
+		if before.Status == "terminated" && *req.Status != "terminated" {
+			sets = append(sets, "terminated_at = NULL", "terminated_reason = NULL")
+		}
 	}
 
 	if len(sets) == 0 {

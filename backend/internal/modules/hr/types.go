@@ -125,6 +125,8 @@ type UpdateEmployeeRequest struct {
 	FirstNameEN    *string `json:"first_name_en,omitempty" validate:"omitempty,max=100"`
 	LastNameEN     *string `json:"last_name_en,omitempty" validate:"omitempty,max=100"`
 	Nickname       *string `json:"nickname,omitempty" validate:"omitempty,max=50"`
+	Gender         *string `json:"gender,omitempty" validate:"omitempty,oneof=M F O"`
+	Birthdate      *string `json:"birthdate,omitempty"`
 	NationalID     *string `json:"national_id,omitempty" validate:"omitempty,max=30"`
 	Phone          *string `json:"phone,omitempty" validate:"omitempty,max=30"`
 	Email          *string `json:"email,omitempty" validate:"omitempty,email,max=200"`

@@ -126,7 +126,7 @@ export type CreateEmployeeRequest = {
   salary?: string
 }
 
-export type UpdateEmployeeRequest = Partial<Omit<CreateEmployeeRequest, 'company_id' | 'gender' | 'birthdate' | 'hired_at'>> & {
+export type UpdateEmployeeRequest = Partial<Omit<CreateEmployeeRequest, 'company_id' | 'hired_at'>> & {
   status?: Exclude<EmployeeStatus, 'terminated'>
 }
 
