@@ -24,12 +24,13 @@ const (
 )
 
 type EmployeesHandler struct {
-	pool  *pgxpool.Pool
-	audit *audit.Writer
+	pool   *pgxpool.Pool
+	audit  *audit.Writer
+	piiKey string
 }
 
-func NewEmployeesHandler(pool *pgxpool.Pool, auditWriter *audit.Writer) *EmployeesHandler {
-	return &EmployeesHandler{pool: pool, audit: auditWriter}
+func NewEmployeesHandler(pool *pgxpool.Pool, auditWriter *audit.Writer, piiKey string) *EmployeesHandler {
+	return &EmployeesHandler{pool: pool, audit: auditWriter, piiKey: piiKey}
 }
 
 // -----------------------------------------------------------------------------
@@ -221,6 +222,7 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 	}
 
 	var newID int64
+	// national_id + salary are encrypted at rest via pgp_sym_encrypt; NULLs pass through.
 	err = tx.QueryRow(ctx, `
 		INSERT INTO employees (
 			employee_code, company_id, department_id, position_id,
@@ -230,13 +232,17 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 		) VALUES (
 			$1,$2,$3,$4,
 			$5,$6,$7,$8,$9,
-			$10,$11,$12,$13,$14,$15,
-			$16,$17,$18
+			$10,$11,
+			CASE WHEN $12::TEXT IS NULL THEN NULL ELSE pgp_sym_encrypt($12::TEXT, $19) END,
+			$13,$14,$15,
+			$16,$17,
+			CASE WHEN $18::TEXT IS NULL THEN NULL ELSE pgp_sym_encrypt($18::TEXT, $19) END
 		) RETURNING id`,
 		empCode, req.CompanyID, req.DepartmentID, req.PositionID,
 		req.FirstNameTH, req.LastNameTH, req.FirstNameEN, req.LastNameEN, req.Nickname,
 		req.Gender, birthdate, req.NationalID, req.Phone, req.Email, addrJSON,
 		req.EmploymentType, hiredAt, req.Salary,
+		h.piiKey,
 	).Scan(&newID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "insert employee: "+err.Error())
@@ -298,6 +304,18 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 		args = append(args, v)
 		sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
 	}
+	// addEncrypted stores a value through pgp_sym_encrypt; uses an appended
+	// PII-key argument for every encrypt call (cheap, key is short).
+	addEncrypted := func(col string, v any) {
+		args = append(args, v)
+		valArg := len(args)
+		args = append(args, h.piiKey)
+		keyArg := len(args)
+		sets = append(sets, fmt.Sprintf(
+			"%s = CASE WHEN $%d::TEXT IS NULL THEN NULL ELSE pgp_sym_encrypt($%d::TEXT, $%d) END",
+			col, valArg, valArg, keyArg,
+		))
+	}
 	if req.DepartmentID != nil {
 		add("department_id", *req.DepartmentID)
 	}
@@ -336,7 +354,7 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 		add("employment_type", *req.EmploymentType)
 	}
 	if req.Salary != nil {
-		add("salary", *req.Salary)
+		addEncrypted("salary", *req.Salary)
 	}
 	if req.Status != nil {
 		add("status", *req.Status)
@@ -446,14 +464,17 @@ func (h *EmployeesHandler) loadEmployee(ctx context.Context, id int64) (*Employe
 		       e.department_id, d.name_en, d.name_th,
 		       e.position_id, p.name_en, p.name_th,
 		       e.first_name_th, e.last_name_th, e.first_name_en, e.last_name_en, e.nickname,
-		       e.gender, e.birthdate, e.national_id, e.phone, e.email, e.address_json,
-		       e.employment_type, e.hired_at, e.terminated_at, e.terminated_reason, e.salary,
+		       e.gender, e.birthdate,
+		       CASE WHEN e.national_id IS NULL THEN NULL ELSE pgp_sym_decrypt(e.national_id, $2) END,
+		       e.phone, e.email, e.address_json,
+		       e.employment_type, e.hired_at, e.terminated_at, e.terminated_reason,
+		       CASE WHEN e.salary IS NULL THEN NULL ELSE pgp_sym_decrypt(e.salary, $2) END,
 		       e.status, e.created_at, e.updated_at
 		FROM employees e
 		JOIN companies   co ON co.id = e.company_id
 		JOIN departments d  ON d.id  = e.department_id
 		JOIN positions   p  ON p.id  = e.position_id
-		WHERE e.id = $1`, id).
+		WHERE e.id = $1`, id, h.piiKey).
 		Scan(&e.ID, &e.EmployeeCode,
 			&e.CompanyID, &e.CompanyNameEN, &e.CompanyNameTH,
 			&e.DepartmentID, &e.DepartmentNameEN, &e.DepartmentNameTH,

@@ -132,7 +132,7 @@ func main() {
 	authed.GET("/hr/positions", hrMaster.ListPositions, hrRead)
 
 	// --- HR employees ---
-	hrEmp := hr.NewEmployeesHandler(pool, auditWriter)
+	hrEmp := hr.NewEmployeesHandler(pool, auditWriter, cfg.PIIEncryptionKey)
 	authed.GET("/hr/employees", hrEmp.List, mw.RequirePermission("hr_employees.read"))
 	authed.GET("/hr/employees/:id", hrEmp.Get, mw.RequirePermission("hr_employees.read"))
 	authed.POST("/hr/employees", hrEmp.Create, mw.RequirePermission("hr_employees.write"))

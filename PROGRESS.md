@@ -25,7 +25,7 @@ Foundation before any money or paperwork flows.
 
 - [ ] `dashboard` · Enterprise overview (5 sub-pages: Overview, Projects, Financial, Sales pipeline, HSE)
 - [ ] `settings` · Company/users/integrations config
-- [ ] `hr_employees` · Employee master (pre-req: approvals reference employees)
+- [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
 - [ ] `gov_rbac` · Role / user / permission management UI
 - [ ] `audit` · Audit log viewer
 - [ ] `approval` · Approval inbox + threshold matrix (Kanban)

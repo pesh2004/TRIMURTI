@@ -27,6 +27,7 @@ type Config struct {
 	Argon2MemoryKB   uint32
 	Argon2Iterations uint32
 	Argon2Parallel   uint8
+	PIIEncryptionKey string
 	SMTPHost         string
 	SMTPPort         int
 	SMTPFrom         string
@@ -55,6 +56,7 @@ func Load() (*Config, error) {
 		Argon2MemoryKB:   uint32(getEnvInt("ARGON2_MEMORY_KB", 65536)),
 		Argon2Iterations: uint32(getEnvInt("ARGON2_ITERATIONS", 3)),
 		Argon2Parallel:   uint8(getEnvInt("ARGON2_PARALLELISM", 4)),
+		PIIEncryptionKey: getEnv("PII_ENCRYPTION_KEY", ""),
 		SMTPHost:         getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:         getEnvInt("SMTP_PORT", 1025),
 		SMTPFrom:         getEnv("SMTP_FROM", "no-reply@trimurti.local"),
@@ -69,6 +71,13 @@ func Load() (*Config, error) {
 		if c.AppEnv != "development" {
 			return nil, fmt.Errorf("SESSION_SECRET must be set to a real value outside development")
 		}
+	}
+	if c.PIIEncryptionKey == "" {
+		if c.AppEnv != "development" {
+			return nil, fmt.Errorf("PII_ENCRYPTION_KEY is required in production (generate with: openssl rand -hex 32)")
+		}
+		// Dev default: deterministic but clearly non-prod.
+		c.PIIEncryptionKey = "dev-pii-key-do-not-use-in-production"
 	}
 	return c, nil
 }
