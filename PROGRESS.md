@@ -28,13 +28,19 @@ Foundation before any money or paperwork flows.
 - [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
   - [x] Migration 0002 (schema) + 0003 (pgcrypto field-level encryption) applied cleanly
   - [x] Backend handlers: list / get / create / update / terminate with PII masking + reveal_pii permission
-  - [x] Audit writes on every mutation
+  - [x] Audit writes on every mutation + separate `hr_employees.reveal_pii` audit row when unmasked PII leaves the server
   - [x] Frontend list + form + drawer ported pixel-near from design handoff; i18n TH + EN
   - [x] Permissions (`hr_employees.read|write|terminate|reveal_pii`) seeded in RBAC
-  - [x] Backend unit tests at `backend/internal/modules/hr/employees_test.go` (PII masking / parseDate / helpers)
-  - [x] Frontend component tests (Vitest + RTL): EmployeeList, EmployeeForm, EmployeeDrawer, pills, format helpers
-  - [x] Playwright E2E `frontend/e2e/hr-employees.spec.ts` — login + open employees list
+  - [x] Backend unit tests: `employees_test.go` (PII masking / helpers) + `validate_test.go` (TH NID Luhn)
+  - [x] Backend integration tests: `employees_integration_test.go` — real Postgres + migrations for Create / PII reveal audit / Update un-terminate (Bug A regression cage) / List filters
+  - [x] TH national ID 13-digit + Luhn checksum validation (backend `validate.go` + frontend `lib/hr/validate.ts`)
+  - [x] Birthdate-must-precede-hire-date guard on Create
+  - [x] Frontend component tests (Vitest + RTL): EmployeeList, EmployeeForm submit flow, EmployeeDrawer reveal + terminate dialog, pills, format + validate helpers (50 tests total)
+  - [x] Playwright E2E `frontend/e2e/hr-employees.spec.ts` — login + open list + create-round-trip
   - [x] Module README at `backend/internal/modules/hr/README.md`
+  - [ ] Bulk CSV import/export — deferred (Phase 1B candidate)
+  - [ ] PII encryption key rotation mechanism — deferred (Phase 7 `fin_etax` or earlier if compliance audit demands)
+  - [ ] Split `employees.go` (562 LOC) into list/create/update/terminate.go — cosmetic, low priority
 - [ ] `gov_rbac` · Role / user / permission management UI
 - [ ] `audit` · Audit log viewer
 - [ ] `approval` · Approval inbox + threshold matrix (Kanban)

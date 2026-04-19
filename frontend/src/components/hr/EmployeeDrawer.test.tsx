@@ -91,6 +91,46 @@ describe('EmployeeDrawer', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('switches to the History tab when clicked', async () => {
+    const user = userEvent.setup()
+
+    renderWithQueryClient(
+      <EmployeeDrawer lang="en" employeeId={42} onClose={() => {}} onEdit={() => {}} />,
+    )
+    await waitFor(() => expect(screen.getByText(/TMT-260042/)).toBeInTheDocument())
+
+    // The first tab ("Overview") is default-active; click History.
+    const historyTab = screen.getByRole('button', { name: /history|ประวัติ/i })
+    await user.click(historyTab)
+    // The History tab is simple (no side effects beyond rendering) —
+    // asserting the active class on the tab button is the cheapest proof
+    // that the click took effect.
+    expect(historyTab.className).toMatch(/active/)
+  })
+
+  it('opens the terminate confirm dialog when Terminate is clicked (with permission)', async () => {
+    perms.add('hr_employees.terminate')
+
+    const user = userEvent.setup()
+
+    renderWithQueryClient(
+      <EmployeeDrawer lang="en" employeeId={42} onClose={() => {}} onEdit={() => {}} />,
+    )
+
+    await waitFor(() => expect(screen.getByText(/TMT-260042/)).toBeInTheDocument())
+
+    const terminate = screen.getByRole('button', { name: /terminate|เลิกจ้าง/i })
+    await user.click(terminate)
+
+    // TerminateDialog renders a reason textarea — use its placeholder as
+    // the signal that the dialog mounted.
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/resignation|ลาออก/i),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows Terminate action only when the caller holds hr_employees.terminate', async () => {
     // First pass: no perms → Terminate button should be absent.
     const { unmount } = renderWithQueryClient(

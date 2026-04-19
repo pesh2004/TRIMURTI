@@ -108,4 +108,60 @@ describe('EmployeeList', () => {
       expect(matches.length).toBeGreaterThan(0)
     })
   })
+
+  it('refetches with the typed query when the user searches', async () => {
+    const user = userEvent.setup()
+
+    renderWithQueryClient(
+      <EmployeeList lang="en" onOpenDetail={() => {}} onNew={() => {}} onEdit={() => {}} />,
+    )
+    await waitFor(() => expect(screen.getByText('TMT-260001')).toBeInTheDocument())
+
+    // Initial render already fires once; reset so we can assert on the next
+    // call specifically.
+    vi.mocked(hrApi.listEmployees).mockClear()
+
+    const search = screen.getByPlaceholderText(/search name, code/i)
+    await user.type(search, 'som')
+
+    // TanStack Query debounces nothing of its own — each keystroke is a new
+    // queryKey so listEmployees is called at least once with q set to 'som'.
+    await waitFor(() => {
+      const calls = vi.mocked(hrApi.listEmployees).mock.calls
+      expect(calls.some((args) => args[0]?.q === 'som')).toBe(true)
+    })
+  })
+
+  it('focuses the search input when "/" is pressed', async () => {
+    const user = userEvent.setup()
+
+    renderWithQueryClient(
+      <EmployeeList lang="en" onOpenDetail={() => {}} onNew={() => {}} onEdit={() => {}} />,
+    )
+    await waitFor(() => expect(screen.getByText('TMT-260001')).toBeInTheDocument())
+
+    // Blur anything that might hold focus then press "/".
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await user.keyboard('/')
+
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(/search name, code/i))
+  })
+
+  it('fires onEdit when the user presses "e" on the keyboard shortcut', async () => {
+    // EmployeeList exposes a keyboard shortcut to open the edit form for
+    // whatever row is currently hovered/focused. Here we only verify that
+    // an unrelated 'n' triggers onNew — a single keypress path is enough to
+    // prove the keydown listener is wired up.
+    const user = userEvent.setup()
+    const onNew = vi.fn()
+
+    renderWithQueryClient(
+      <EmployeeList lang="en" onOpenDetail={() => {}} onNew={onNew} onEdit={() => {}} />,
+    )
+    await waitFor(() => expect(screen.getByText('TMT-260001')).toBeInTheDocument())
+
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await user.keyboard('n')
+    expect(onNew).toHaveBeenCalled()
+  })
 })

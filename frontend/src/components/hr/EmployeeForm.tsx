@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/hr'
 import { useAuth } from '@/lib/auth'
 import { useToast } from './Toast'
+import { validateThaiNationalID, validateBirthdateBeforeHire } from '@/lib/hr/validate'
 
 type FormState = {
   company_id: number
@@ -176,12 +177,17 @@ export function EmployeeForm({
     if (!form.last_name_th) err.last_name_th = t('hr.required')
     if (!form.birthdate) err.birthdate = t('hr.required')
     if (!form.hired_at) err.hired_at = t('hr.required')
+    // TH NID: length + Luhn checksum (matches backend validator).
     if (form.national_id) {
-      const s = form.national_id.replace(/\D/g, '')
-      if (s.length !== 13) err.national_id = t('hr.invalidNid')
+      const res = validateThaiNationalID(form.national_id)
+      if (res !== true) err.national_id = t('hr.invalidNid')
     }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) err.email = t('hr.invalidEmail')
     if (form.phone && !/^[0-9\-+\s()]{8,}$/.test(form.phone)) err.phone = t('hr.invalidPhone')
+    // Backend rejects birthdate >= hired_at; catch it here too.
+    if (validateBirthdateBeforeHire(form.birthdate, form.hired_at) !== true) {
+      err.birthdate = t('hr.invalidBirthdate')
+    }
     return err
   }
 

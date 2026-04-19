@@ -156,12 +156,37 @@ func (h *EmployeesHandler) Get(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
 	}
 
-	emp, err := h.loadEmployee(c.Request().Context(), id)
+	ctx := c.Request().Context()
+	emp, err := h.loadEmployee(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "employee not found")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	// Audit PII reveal server-side. The frontend drawer also toasts but that
+	// signal is client-trusted — an attacker hitting the API directly would
+	// read plaintext without a trail. Writing here ensures every unmasked
+	// return is logged, independent of UI.
+	if sess := auth.FromContext(ctx); sess != nil && sess.HasPermission(PermRevealPII) {
+		if (emp.NationalID != nil && *emp.NationalID != "") || emp.Salary != nil {
+			fields := []string{}
+			if emp.NationalID != nil && *emp.NationalID != "" {
+				fields = append(fields, "national_id")
+			}
+			if emp.Salary != nil {
+				fields = append(fields, "salary")
+			}
+			_ = h.audit.Write(ctx, audit.Entry{
+				IP:        c.RealIP(),
+				UserAgent: c.Request().UserAgent(),
+				Action:    "hr_employees.reveal_pii",
+				Entity:    "employee",
+				EntityID:  strconv.FormatInt(emp.ID, 10),
+				After:     map[string]any{"fields": fields},
+			})
+		}
 	}
 
 	applyPIIMask(c, emp)
@@ -188,6 +213,14 @@ func (h *EmployeesHandler) Create(c echo.Context) error {
 	hiredAt, err := parseDate(req.HiredAt)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "hired_at: "+err.Error())
+	}
+	if !birthdate.Before(hiredAt) {
+		return echo.NewHTTPError(http.StatusBadRequest, "birthdate must be before hired_at")
+	}
+	if req.NationalID != nil {
+		if err := ValidateThaiNationalID(*req.NationalID); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "national_id: "+err.Error())
+		}
 	}
 
 	addrJSON, err := marshalAddress(req.AddressJSON)
@@ -285,6 +318,11 @@ func (h *EmployeesHandler) Update(c echo.Context) error {
 	}
 	if err := c.Validate(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if req.NationalID != nil {
+		if err := ValidateThaiNationalID(*req.NationalID); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "national_id: "+err.Error())
+		}
 	}
 
 	ctx := c.Request().Context()

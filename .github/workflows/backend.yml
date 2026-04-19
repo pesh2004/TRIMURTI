@@ -57,6 +57,11 @@ jobs:
         run: go vet ./...
       - name: go build
         run: go build ./...
+      # Apply migrations so integration tests can talk to a real schema.
+      # Tests that don't need the DB ignore this; tests that do gate on
+      # DATABASE_URL being set and skip otherwise.
+      - name: Apply migrations
+        run: go run ./cmd/migrate up
       - name: go test
         run: go test -race -count=1 -coverprofile=coverage.out ./...
       - name: Upload coverage

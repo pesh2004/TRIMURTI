@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { renderWithQueryClient } from '@/test/utils'
 
@@ -65,6 +66,73 @@ describe('EmployeeForm', () => {
         screen.getByRole('heading', { name: /new employee|เพิ่มพนักงาน/i }),
       ).toBeInTheDocument()
     })
+  })
+
+  it('submits create with gender + birthdate populated from the form', async () => {
+    // Regression cage for Bug B class: silent field drop on submit. We
+    // assert the actual body passed to hrApi.createEmployee contains both
+    // gender and birthdate.
+    vi.mocked(hrApi.createEmployee).mockResolvedValue({
+      id: 99,
+      employee_code: 'TMT-260099',
+      company_id: 1,
+      department_id: 10,
+      position_id: 100,
+      first_name_th: 'สมชาย',
+      last_name_th: 'ใจดี',
+      gender: 'M',
+      birthdate: '1990-05-15',
+      employment_type: 'fulltime',
+      hired_at: '2025-01-01',
+      status: 'active',
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    })
+
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+
+    renderWithQueryClient(
+      <EmployeeForm lang="en" editingId={null} onCancel={() => {}} onSaved={onSaved} />,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /new employee/i })).toBeInTheDocument(),
+    )
+
+    // Field labels aren't linked to inputs via htmlFor, so find inputs by
+    // the field's label text + DOM traversal — close enough to the user's
+    // mental model ("the input under the 'First name (Thai)' label").
+    const labelledInput = (label: RegExp) => {
+      const lbl = screen.getByText(label)
+      const field = lbl.closest('.field') as HTMLElement | null
+      const input = field?.querySelector('input')
+      if (!input) throw new Error(`no input found under label ${label}`)
+      return input
+    }
+
+    await user.type(labelledInput(/First name \(Thai\)/), 'สมชาย')
+    await user.type(labelledInput(/Last name \(Thai\)/), 'ใจดี')
+
+    // Date inputs need fireEvent.change — userEvent.type fights the
+    // `type=date` input formatter.
+    const birthdate = labelledInput(/Birthdate/) as HTMLInputElement
+    fireEvent.change(birthdate, { target: { value: '1990-05-15' } })
+
+    // Find the primary Save action. Matches either "Save & Close" (en) or
+    // its Thai equivalent without being picky.
+    const saveButtons = screen.getAllByRole('button', { name: /save|บันทึก/i })
+    await user.click(saveButtons[saveButtons.length - 1])
+
+    await waitFor(() => {
+      expect(hrApi.createEmployee).toHaveBeenCalled()
+    })
+
+    const body = vi.mocked(hrApi.createEmployee).mock.calls[0][0]
+    expect(body.gender).toBe('M')
+    expect(body.birthdate).toBe('1990-05-15')
+    expect(body.first_name_th).toBe('สมชาย')
+    expect(body.last_name_th).toBe('ใจดี')
   })
 
   it('populates the form from hrApi.getEmployee in edit mode', async () => {
