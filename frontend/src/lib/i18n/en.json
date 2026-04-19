@@ -11,7 +11,21 @@
     "password": "Password",
     "submit": "Sign in",
     "invalid": "Invalid email or password",
-    "locked": "Account temporarily locked. Try again in 15 minutes."
+    "locked": "Account temporarily locked. Try again in 15 minutes.",
+    "forgotLink": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter the email for your account. We'll send a link to choose a new password.",
+    "forgotSubmit": "Send reset link",
+    "forgotSent": "If an account exists for that email, a reset link is on its way. The link expires in 15 minutes.",
+    "backToLogin": "Back to sign-in",
+    "resetTitle": "Choose a new password",
+    "resetSubtitle": "The reset link is valid for 15 minutes and can only be used once.",
+    "resetSubmit": "Save new password",
+    "resetDone": "Password updated. Redirecting to sign-in…",
+    "resetError": "Could not reset — the link may have expired. Request a new one.",
+    "resetMissingToken": "This page needs a reset token (usually in the email link).",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password"
   },
   "features": {
     "title": "What TRIMURTI can do today",

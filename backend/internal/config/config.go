@@ -31,6 +31,8 @@ type Config struct {
 	SMTPHost         string
 	SMTPPort         int
 	SMTPFrom         string
+	SMTPUser         string
+	SMTPPass         string
 	CORSOrigins      []string
 	RateLimitPerMin  int
 	LoginRateLimit   int
@@ -57,9 +59,11 @@ func Load() (*Config, error) {
 		Argon2Iterations: uint32(getEnvInt("ARGON2_ITERATIONS", 3)),
 		Argon2Parallel:   uint8(getEnvInt("ARGON2_PARALLELISM", 4)),
 		PIIEncryptionKey: getEnv("PII_ENCRYPTION_KEY", ""),
-		SMTPHost:         getEnv("SMTP_HOST", "localhost"),
-		SMTPPort:         getEnvInt("SMTP_PORT", 1025),
+		SMTPHost:         getEnv("SMTP_HOST", ""),
+		SMTPPort:         getEnvInt("SMTP_PORT", 587),
 		SMTPFrom:         getEnv("SMTP_FROM", "no-reply@trimurti.local"),
+		SMTPUser:         getEnv("SMTP_USER", ""),
+		SMTPPass:         getEnv("SMTP_PASS", ""),
 		CORSOrigins:      splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")),
 		RateLimitPerMin:  getEnvInt("RATE_LIMIT_PER_MINUTE", 100),
 		LoginRateLimit:   getEnvInt("LOGIN_RATE_LIMIT_PER_15MIN", 5),

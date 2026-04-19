@@ -57,6 +57,30 @@ export const CATEGORY_LABELS: Record<FeatureCategory, { th: string; en: string }
 export const features: Feature[] = [
   // ---------- Live today ----------
   {
+    id: 'auth.password_reset',
+    category: 'security',
+    status: 'live',
+    since: 'Phase 0 (Ops 3)',
+    title_th: 'รีเซ็ตรหัสผ่านแบบพึ่งตัวเองได้',
+    title_en: 'Self-service password reset',
+    summary_th:
+      'ลืมรหัส → ใส่อีเมล → รับลิงก์รีเซ็ต 15 นาที → ตั้งรหัสใหม่ ทุกการร้องขอถูก audit + rate limit; หน้า response ไม่บอกว่ามีบัญชีจริงหรือไม่ (ป้องกัน user enumeration)',
+    summary_en:
+      'Forgot password → request link → click within 15 minutes → set a new one. Every request is audited and rate-limited; the response shape never reveals whether the email actually exists (enumeration-safe).',
+    highlights_th: [
+      'Token เก็บเป็น SHA-256 ใน DB — dump ฐานข้อมูลไม่ทำให้ลิงก์ยังใช้ได้',
+      'Single-use + expire 15 นาที',
+      'Reset สำเร็จ → ปลดล็อกบัญชี + ล้าง failed-login counter',
+      'Email fallback ลง server log ถ้า SMTP ยังไม่ได้ตั้ง',
+    ],
+    highlights_en: [
+      'Tokens are SHA-256 hashed at rest — a DB leak does not yield usable reset links',
+      'Single-use, 15-minute TTL',
+      'Successful reset clears lockout state and failed-login counter',
+      'Email falls back to server log when SMTP isn\'t configured yet',
+    ],
+  },
+  {
     id: 'auth.session',
     category: 'security',
     status: 'live',

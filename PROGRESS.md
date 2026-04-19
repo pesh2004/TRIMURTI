@@ -157,10 +157,11 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 ### Session 3 — User admin + password recovery
 
-- [ ] Password-reset flow (email token, single-use, 15-min TTL)
-- [ ] Minimal `gov_rbac` UI: admin creates users + assigns roles (no styling polish required)
-- [ ] "Forgot password?" link on `/login`
-- [ ] SMTP wired to a real provider in prod (Mailhog stays in dev) — **requires operator to provide SMTP credentials**
+- [x] Password-reset flow — migration 0005, backend `/api/v1/auth/password-reset/{request,confirm}`, SHA-256 token hashed at rest, single-use, 15-min TTL, audited, rate-limited (5/15min per IP), enumeration-safe (always 200)
+- [x] "Forgot password?" link on `/login`; frontend `/forgot-password` + `/password-reset?token=` routes, bilingual
+- [x] Email abstraction: SMTPSender + ConsoleSender fallback (prints to server log when SMTP unconfigured — operator can retrieve reset URL from `docker compose logs backend` without a real provider wired up)
+- [ ] Minimal `gov_rbac` UI: admin creates users + assigns roles — deferred to its own module slot in Phase 1 (until then, CLI via `compose run --rm seed` remains the provisioning path)
+- [ ] SMTP wired to a real provider in prod — **requires operator to add `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` to `.env`; the console fallback keeps the reset flow functional until then**
 
 ### Session 4 — CSRF + rate-limit hardening
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -111,6 +111,11 @@ export function LoginPage() {
             <Button type="submit" disabled={submitting} style={{ marginTop: 4 }}>
               {submitting ? t('app.loading') : t('auth.submit')}
             </Button>
+            <div style={{ textAlign: 'center', marginTop: 4 }}>
+              <Link to="/forgot-password" className="t-xs t-muted">
+                {t('auth.forgotLink')}
+              </Link>
+            </div>
           </form>
         </CardBody>
       </Card>

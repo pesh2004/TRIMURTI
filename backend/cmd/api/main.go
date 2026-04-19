@@ -20,6 +20,7 @@ import (
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/auth"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/config"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/db"
+	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/email"
 	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 	authmod "github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/auth"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/health"
@@ -111,6 +112,8 @@ func main() {
 
 	// Auth module — public routes
 	authHandler := authmod.New(pool, sessions, auditWriter, cfg.CookieName, cfg.CookieDomain, cfg.CookieSecure, cfg.SessionTTL)
+	mailer := email.NewFromEnv(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom, cfg.SMTPUser, cfg.SMTPPass)
+	resetHandler := authmod.NewResetHandler(authHandler, mailer, cfg.FrontendBaseURL)
 	api.POST("/auth/login",
 		authHandler.Login,
 		mw.RateLimit(rdb, "login", cfg.LoginRateLimit, 15*time.Minute, func(c echo.Context) string {
@@ -118,6 +121,16 @@ func main() {
 		}),
 	)
 	api.POST("/auth/logout", authHandler.Logout)
+	// Password reset — rate-limit the request endpoint so it can't be used
+	// as an email-bombing or user-enumeration oracle. Confirm rate-limits
+	// by token hash lookup naturally (invalid tokens return 400).
+	api.POST("/auth/password-reset/request",
+		resetHandler.RequestReset,
+		mw.RateLimit(rdb, "password_reset", 5, 15*time.Minute, func(c echo.Context) string {
+			return c.RealIP()
+		}),
+	)
+	api.POST("/auth/password-reset/confirm", resetHandler.ConfirmReset)
 
 	// Authenticated group
 	authed := api.Group("")

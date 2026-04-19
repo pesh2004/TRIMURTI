@@ -25,6 +25,7 @@ happens if it leaks. Companion to `deploy/.env.production.example`.
 | `PII_ENCRYPTION_KEY` | Encrypts national_id + salary in DB | **Existing encrypted rows become unreadable** | No — requires re-encrypt |
 | `SEED_ADMIN_PASSWORD` | Initial admin user | Only used at seed time | N/A |
 | `SPACES_ACCESS_KEY` / `SPACES_SECRET_KEY` | Off-box backup upload | Tonight's backup fails until updated | Yes |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Outbound mail (password reset links today; notifications later) | Reset emails stop sending; `ConsoleSender` fallback kicks in (reset URL printed to backend logs) | Yes |
 | `ACME_EMAIL` | Let's Encrypt notifications (cert renewal) | Cosmetic, no runtime effect | Yes |
 
 ---
@@ -136,6 +137,38 @@ unset OLD_KEY NEW_KEY
 
 If step 6 fails: stop, don't accept further writes, restore from the backup
 taken in step 1 using `deploy/RESTORE.md` → full restore, then try again.
+
+### SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS
+
+Password reset emails go through here. Until these are set, the system
+falls back to `ConsoleSender` — the reset URL is printed to the backend
+container's stderr instead of emailed. The operator can recover a link
+via `docker compose logs backend | grep -A5 'email (console fallback)'`,
+which is fine for the test-server stage but not for real end-user
+support.
+
+Recommended provider: **Mailgun** or **Amazon SES** (both have free
+tiers). Gmail works with an app password but has a daily cap that
+suffices for test-server volumes.
+
+```bash
+# Example: SES sgp1 region, sending from no-reply@your-domain
+sed -i 's|^SMTP_HOST=.*|SMTP_HOST=email-smtp.ap-southeast-1.amazonaws.com|' .env
+sed -i 's|^SMTP_PORT=.*|SMTP_PORT=587|' .env
+sed -i 's|^SMTP_USER=.*|SMTP_USER=<SES SMTP IAM access key>|' .env
+sed -i 's|^SMTP_PASS=.*|SMTP_PASS=<SES SMTP secret — generate from IAM>|' .env
+sed -i 's|^SMTP_FROM=.*|SMTP_FROM=no-reply@your-domain|' .env
+
+./deploy/deploy.sh
+
+# Verify: request a reset for the admin email; if SMTP is wired the
+# backend logs NO console-fallback block, and you actually receive
+# the email. If SMTP auth fails, backend logs print the fallback
+# block + the network error.
+```
+
+Revoking a compromised SMTP key just means regenerating in the
+provider panel and rerunning the sed + deploy.
 
 ### SPACES_ACCESS_KEY / SPACES_SECRET_KEY
 

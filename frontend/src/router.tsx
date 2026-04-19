@@ -6,6 +6,8 @@ import { DashboardPage } from '@/routes/dashboard'
 import { SettingsPage } from '@/routes/settings'
 import { HrEmployeesPage } from '@/routes/hr-employees'
 import { FeaturesPage } from '@/routes/features'
+import { ForgotPasswordPage } from '@/routes/forgot-password'
+import { PasswordResetPage } from '@/routes/password-reset'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -15,6 +17,22 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+})
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  component: ForgotPasswordPage,
+})
+
+const passwordResetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/password-reset',
+  component: PasswordResetPage,
+  // `?token=XYZ` comes in via this validator so useSearch() is typed.
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === 'string' ? search.token : undefined,
+  }),
 })
 
 const appLayoutRoute = createRoute({
@@ -49,6 +67,8 @@ const featuresRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  forgotPasswordRoute,
+  passwordResetRoute,
   appLayoutRoute.addChildren([dashboardRoute, settingsRoute, hrEmployeesRoute, featuresRoute]),
 ])
 
