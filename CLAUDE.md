@@ -16,7 +16,7 @@ It's the source of truth for look-and-feel only.
 
 ## Tech stack (short)
 
-- Backend: Go 1.24, Echo, pgx, sqlc, golang-migrate, Asynq, Redis, Argon2id, JWT
+- Backend: Go 1.25, Echo, pgx, sqlc (configured; generated code added per-module when needed), golang-migrate, Redis, Argon2id, Redis-backed sessions (no JWT)
 - Frontend: Vite 6, React 19, TypeScript strict, TanStack Router/Query/Table, Tailwind v4, shadcn/ui, i18next, Recharts
 - Data: PostgreSQL 17 (primary + read replica in prod), Redis 7
 - Infra dev: docker-compose; prod: DigitalOcean first, AWS later — same Docker images
@@ -30,7 +30,7 @@ backend/              Go API
   cmd/seed/           Seed data
   internal/
     auth/             Login, session, MFA, RBAC, password hashing
-    audit/            Audit log writer (Asynq-backed)
+    audit/            Audit log writer (synchronous pgx writes for Phase 0; queue deferred)
     config/           Env loader
     db/               pgx pool
     middleware/       Request ID, logging, CORS, rate limit, auth, recover
@@ -42,7 +42,7 @@ backend/              Go API
         types.go
         handler_test.go
   migrations/         golang-migrate .sql files
-  queries/            sqlc .sql files (compiled to internal/db/gen/)
+  queries/            sqlc .sql files (generated Go lands in internal/db/gen/ once `make sqlc` runs — not generated yet; handlers use pgx directly)
   sqlc.yaml
 frontend/
   src/
@@ -63,8 +63,6 @@ frontend/
       i18n/           i18next + dictionaries
     styles/
       globals.css     Tailwind + design tokens
-shared/
-  openapi.yaml        Single API contract (source of truth for types)
 design/
   ERP.html            Visual reference only — do not edit
 ```

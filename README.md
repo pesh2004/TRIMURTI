@@ -13,10 +13,10 @@ Live demo (Phase 0): https://168.144.32.187.sslip.io
 
 | Layer | Tech |
 |---|---|
-| Backend | Go 1.24, Echo, pgx, sqlc, golang-migrate, Asynq |
+| Backend | Go 1.25, Echo, pgx, sqlc (configured; generated code added per-module when needed), golang-migrate |
 | Frontend | Vite 6, React 19, TypeScript, TanStack Router/Query/Table, Tailwind v4, shadcn/ui, i18next, Recharts |
 | Database | PostgreSQL 17 |
-| Cache / Session / Queue | Redis 7 |
+| Cache / Session | Redis 7 |
 | Dev infra | Docker Compose (Postgres + Redis + Mailhog) |
 | CI | GitHub Actions (lint, test, build, security scans) |
 
@@ -27,7 +27,6 @@ Live demo (Phase 0): https://168.144.32.187.sslip.io
 ├── backend/          Go API service
 ├── frontend/         Vite + React SPA
 ├── design/           ERP.html prototype (visual reference only)
-├── shared/           OpenAPI spec (single API contract)
 ├── infra/            IaC and deployment config
 ├── .github/          CI workflows + Dependabot
 ├── PROGRESS.md       80-module build checklist
@@ -38,7 +37,7 @@ Live demo (Phase 0): https://168.144.32.187.sslip.io
 
 ## Prerequisites
 
-- Go **1.24+**
+- Go **1.25+**
 - Node **22 LTS+** (or 24)
 - Docker Desktop (or OrbStack / Colima) — for Postgres + Redis + Mailhog
 - `make`

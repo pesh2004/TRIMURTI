@@ -13,8 +13,9 @@ import (
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/auth"
 )
 
-// Writer persists audit entries synchronously for Phase 0. A later phase will move
-// this behind an Asynq queue so slow writes don't stall mutation handlers.
+// Writer persists audit entries synchronously via pgx. A background queue is a
+// future optimisation (not wired today); under load the synchronous write adds
+// one round-trip to each mutation handler.
 type Writer struct {
 	pool *pgxpool.Pool
 }
