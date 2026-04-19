@@ -23,9 +23,12 @@ test.describe('hr_employees smoke', () => {
 
     await page.goto('/hr-employees')
 
-    // Page title is translated; accept either locale.
+    // Page heading is <h1>{t('hr.list')}</h1> → "Employee List" / "รายชื่อพนักงาน".
+    // Loosen the pattern so either locale matches; the `.first()` guards
+    // against the sidebar nav item also being considered a heading on a
+    // future iteration.
     await expect(
-      page.getByRole('heading', { name: /employees|พนักงาน/i }).first(),
+      page.getByRole('heading', { name: /employee|พนักงาน/i }).first(),
     ).toBeVisible()
 
     // The "New Employee" CTA is always present for someone with write
