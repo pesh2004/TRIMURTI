@@ -106,6 +106,10 @@ services:
   migrate:
     # One-shot container: runs migrations then exits. `deploy.sh` invokes it
     # on every deploy via `docker compose run --rm migrate`.
+    #
+    # config.Load() (post-Session-2) requires both SESSION_SECRET and
+    # PII_ENCRYPTION_KEY in every context, even though neither is used by
+    # the migrate path. We still pass both so the binary starts up.
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -114,6 +118,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       SESSION_SECRET: ${SESSION_SECRET}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
     depends_on:
       postgres: { condition: service_healthy }
     networks: [internal]
@@ -128,6 +133,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       SESSION_SECRET: ${SESSION_SECRET}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@trimurti.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     depends_on:
