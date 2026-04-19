@@ -95,11 +95,13 @@ export const features: Feature[] = [
       'Argon2id memory-hard hashing (OWASP-compliant)',
       'Sliding session timeout + server-side revocation',
       'Role / user / permission ทุกรายการ seed ใน gov_rbac',
+      'CSRF double-submit + per-user rate limits บน mutation ทุกตัว',
     ],
     highlights_en: [
       'Argon2id memory-hard hashing (OWASP-compliant)',
       'Sliding session timeout + server-side revocation',
       'Every role / user / permission seeded via gov_rbac',
+      'CSRF double-submit + per-user rate limits on every mutation',
     ],
   },
   {

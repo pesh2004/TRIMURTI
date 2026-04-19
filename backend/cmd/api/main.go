@@ -132,9 +132,11 @@ func main() {
 	)
 	api.POST("/auth/password-reset/confirm", resetHandler.ConfirmReset)
 
-	// Authenticated group
+	// Authenticated group. CSRF guards every mutation (GET/HEAD/OPTIONS pass
+	// through untouched); see middleware.CSRF for the double-submit pattern.
 	authed := api.Group("")
 	authed.Use(mw.Auth(sessions, cfg.CookieName))
+	authed.Use(mw.CSRF())
 	authed.GET("/auth/me", authHandler.Me)
 
 	// --- HR master (read-only dropdowns) ---
@@ -145,12 +147,18 @@ func main() {
 	authed.GET("/hr/positions", hrMaster.ListPositions, hrRead)
 
 	// --- HR employees ---
+	// Per-user rate limits on the mutation endpoints — a single logged-in
+	// session shouldn't be able to, say, terminate hundreds of employees
+	// in a minute. Create/Update are generous (bulk imports are legitimate);
+	// Terminate is tight because it's business-sensitive.
 	hrEmp := hr.NewEmployeesHandler(pool, auditWriter, cfg.PIIEncryptionKey)
+	rlEmpWrite := mw.RateLimitByUser(rdb, "hr_employees_write", 100, time.Hour)
+	rlEmpTerm := mw.RateLimitByUser(rdb, "hr_employees_terminate", 10, time.Hour)
 	authed.GET("/hr/employees", hrEmp.List, mw.RequirePermission("hr_employees.read"))
 	authed.GET("/hr/employees/:id", hrEmp.Get, mw.RequirePermission("hr_employees.read"))
-	authed.POST("/hr/employees", hrEmp.Create, mw.RequirePermission("hr_employees.write"))
-	authed.PATCH("/hr/employees/:id", hrEmp.Update, mw.RequirePermission("hr_employees.write"))
-	authed.POST("/hr/employees/:id/terminate", hrEmp.Terminate, mw.RequirePermission("hr_employees.terminate"))
+	authed.POST("/hr/employees", hrEmp.Create, mw.RequirePermission("hr_employees.write"), rlEmpWrite)
+	authed.PATCH("/hr/employees/:id", hrEmp.Update, mw.RequirePermission("hr_employees.write"), rlEmpWrite)
+	authed.POST("/hr/employees/:id/terminate", hrEmp.Terminate, mw.RequirePermission("hr_employees.terminate"), rlEmpTerm)
 
 	// TODO Phase 1 additions: dashboard, settings, gov_rbac, audit, approval.
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/audit"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/auth"
+	mw "github.com/ama-bmgpesh/trimurti-erp/backend/internal/middleware"
 )
 
 type Handler struct {
@@ -137,6 +138,10 @@ func (h *Handler) Login(c echo.Context) error {
 		Secure:   h.cookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
+	// Fresh CSRF token for the new session. Read by the frontend's
+	// document.cookie and echoed back in X-CSRF-Token on every mutation;
+	// see middleware.CSRF for the verification path.
+	mw.IssueCSRFCookie(c, h.cookieDomain, h.cookieSecure)
 
 	// Audit: login success. Before = nil (no prior state), After = session summary.
 	_ = h.audit.Write(ctx, audit.Entry{
@@ -169,6 +174,7 @@ func (h *Handler) Logout(c echo.Context) error {
 		Expires: time.Unix(0, 0), HttpOnly: true, Secure: h.cookieSecure,
 		SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
+	mw.ClearCSRFCookie(c, h.cookieDomain, h.cookieSecure)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -181,6 +187,9 @@ func (h *Handler) Me(c echo.Context) error {
 	if err := h.pool.QueryRow(c.Request().Context(), `SELECT username FROM users WHERE id = $1`, sess.UserID).Scan(&username); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "user lookup failed")
 	}
+	// Upgrade path for sessions that pre-date Session-4: if the user is
+	// authenticated but the CSRF cookie is absent, mint one now. Idempotent.
+	mw.IssueCSRFCookieIfMissing(c, h.cookieDomain, h.cookieSecure)
 	return c.JSON(http.StatusOK, meResponse{
 		ID:          sess.UserID,
 		Email:       sess.Email,

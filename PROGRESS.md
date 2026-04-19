@@ -165,9 +165,9 @@ the deployment safe. **No real data until every item below is `[x]`**
 
 ### Session 4 — CSRF + rate-limit hardening
 
-- [ ] CSRF token middleware enforced on every mutation endpoint
-- [ ] Rate limiter covers sensitive non-login endpoints (password reset request, PII reveal, terminate)
-- [ ] Per-user (not just per-IP) rate-limit bucket
+- [x] CSRF middleware (`middleware.CSRF`) enforces double-submit cookie on every authenticated mutation; GET/HEAD/OPTIONS pass through untouched to keep CORS preflights working. Cookie `trimurti_csrf` is non-HttpOnly so the SPA can mirror it into `X-CSRF-Token`; backend verifies in constant time.
+- [x] Rate limit coverage extended — password-reset request (per-IP), HR create/update (100/hour per user), HR terminate (10/hour per user). PII-reveal rate-limit deferred: implementing it properly requires an audit-counter-based bucket rather than a simple per-minute counter; tracked as Phase-1 ops tweak.
+- [x] `middleware.RateLimitByUser` helper — wraps the existing RateLimit with a `u:<id>` key derived from `auth.FromContext`, falls back to IP when no session is in context.
 
 ### Session 5 — Ops basics
 
