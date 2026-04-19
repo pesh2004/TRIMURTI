@@ -161,7 +161,7 @@ the deployment safe. **No real data until every item below is `[x]`**
 - [x] "Forgot password?" link on `/login`; frontend `/forgot-password` + `/password-reset?token=` routes, bilingual
 - [x] Email abstraction: SMTPSender + ConsoleSender fallback (prints to server log when SMTP unconfigured — operator can retrieve reset URL from `docker compose logs backend` without a real provider wired up)
 - [ ] Minimal `gov_rbac` UI: admin creates users + assigns roles — deferred to its own module slot in Phase 1 (until then, CLI via `compose run --rm seed` remains the provisioning path)
-- [ ] SMTP wired to a real provider in prod — **requires operator to add `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` to `.env`; the console fallback keeps the reset flow functional until then**
+- [x] SMTP wired to Gmail (ama.bmgpesh@gmail.com, app-password auth, port 587 STARTTLS) on 2026-04-19 — password-reset emails delivered to the inbox end-to-end; ConsoleSender fallback retained for when SMTP is unavailable (network issues, rotated app password, etc.)
 
 ### Session 4 — CSRF + rate-limit hardening
 

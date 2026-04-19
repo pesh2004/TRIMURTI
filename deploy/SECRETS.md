@@ -147,24 +147,41 @@ via `docker compose logs backend | grep -A5 'email (console fallback)'`,
 which is fine for the test-server stage but not for real end-user
 support.
 
-Recommended provider: **Mailgun** or **Amazon SES** (both have free
-tiers). Gmail works with an app password but has a daily cap that
-suffices for test-server volumes.
+Options: **Gmail app password** (free, ~500/day, requires 2FA), **Amazon
+SES** (cheap at scale, needs sender verification), **Mailgun/SendGrid**
+(free tiers ~100-300/day). Gmail is the fastest path and what the
+test-server currently uses.
 
 ```bash
-# Example: SES sgp1 region, sending from no-reply@your-domain
-sed -i 's|^SMTP_HOST=.*|SMTP_HOST=email-smtp.ap-southeast-1.amazonaws.com|' .env
-sed -i 's|^SMTP_PORT=.*|SMTP_PORT=587|' .env
-sed -i 's|^SMTP_USER=.*|SMTP_USER=<SES SMTP IAM access key>|' .env
-sed -i 's|^SMTP_PASS=.*|SMTP_PASS=<SES SMTP secret — generate from IAM>|' .env
-sed -i 's|^SMTP_FROM=.*|SMTP_FROM=no-reply@your-domain|' .env
+# upsert helper — `sed -i` alone is a no-op when the key is absent.
+set_env() {
+  local key="$1" value="$2" file="/srv/trimurti/.env"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    echo "${key}=${value}" >> "$file"
+  fi
+}
+
+# Accept the app password via read -sp so it never lands in shell history.
+read -sp "SMTP password (app password for Gmail): " PW && echo
+
+# Gmail example — swap in SES/Mailgun values as needed.
+set_env SMTP_HOST  "smtp.gmail.com"
+set_env SMTP_PORT  "587"
+set_env SMTP_USER  "ama.bmgpesh@gmail.com"        # must match auth account
+set_env SMTP_FROM  "ama.bmgpesh@gmail.com"        # Gmail refuses spoof
+set_env SMTP_PASS  "$PW"
+unset PW
 
 ./deploy/deploy.sh
 
-# Verify: request a reset for the admin email; if SMTP is wired the
-# backend logs NO console-fallback block, and you actually receive
-# the email. If SMTP auth fails, backend logs print the fallback
-# block + the network error.
+# Verify: request a reset for the admin email. If SMTP is wired, the
+# backend log contains NO "console fallback" block AND the recipient
+# receives the email. If SMTP auth fails, backend logs print both the
+# fallback block and the SMTP error.
+docker compose -f deploy/docker-compose.prod.yml --env-file .env logs backend --tail 30 \
+  | grep -iE "smtp|console fallback"
 ```
 
 Revoking a compromised SMTP key just means regenerating in the
@@ -234,3 +251,4 @@ After real data is in, rotation becomes a managed procedure (see above).
 | Date (UTC) | Operator | Triggered by | Secrets rotated | Notes |
 |---|---|---|---|---|
 | 2026-04-19 ~07:50 | pesh2004 | Session-2 cutover (initial post-bootstrap rotation) | `REDIS_PASSWORD`, `SESSION_SECRET`, `POSTGRES_PASSWORD`, `SEED_ADMIN_PASSWORD` | PII key deferred until first customer data. Two sub-incidents surfaced mid-rotation and are now fixed in code: (a) `POSTGRES_PASSWORD` generated via `openssl rand -base64 24` contained `/`, which silently broke `DATABASE_URL` userinfo parsing — rotated to hex; preflight now rejects URL-unsafe chars. (b) `seed` ignored `SEED_ADMIN_PASSWORD` for existing users — fixed in f4206a6 so the env var now actually rotates the password. Login verified post-rotation (`HTTP 200`, ADMIN role + 13 permissions). |
+| 2026-04-19 ~08:55 | pesh2004 | Session-3 SMTP cutover (password-reset email delivery) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` added | Wired Gmail SMTP (ama.bmgpesh@gmail.com, app password, port 587 STARTTLS). End-to-end verified: request password reset → email received in inbox, reset link opened, new password applied. One sub-incident: first `sed -i` rotation produced a no-op because `.env` didn't have the SMTP keys yet; added an "insert if missing, replace if present" helper to the ops flow (documented in SECRETS.md alongside the POSTGRES_PASSWORD procedure). |
