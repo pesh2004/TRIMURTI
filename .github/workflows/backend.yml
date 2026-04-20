@@ -52,7 +52,7 @@ jobs:
       PII_ENCRYPTION_KEY: ci_pii_key_not_for_prod_usage_64hexchars_aaaaaaaaaaaaaaaaaaaaaaaa
       APP_ENV: development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
@@ -82,7 +82,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
@@ -102,7 +102,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
