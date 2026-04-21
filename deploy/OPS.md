@@ -262,4 +262,4 @@ whenever the monitoring path is (re)configured.
 
 | Date (UTC) | Operator | Outage induced | Alert arrived at | Gap |
 |---|---|---|---|---|
-| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 2026-04-21 03:38 | pesh2004 | `docker stop trimurti-redis` at 03:38:07 UTC — `/healthz` returned 503 `"redis":"fail"` | DOWN email at 03:39 UTC (≈1 min after outage). UP email at 03:54 UTC after `docker start trimurti-redis` + 5s wait. | ≈1 min (within 5 min poll interval) |
