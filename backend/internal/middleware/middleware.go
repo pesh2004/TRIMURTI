@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -89,7 +91,12 @@ func Recover(logger zerolog.Logger) echo.MiddlewareFunc {
 
 // Auth validates the session cookie and injects the session into context.
 // Rejects anonymous requests with 401.
-func Auth(store *auth.Store, cookieName string) echo.MiddlewareFunc {
+//
+// The pool argument is used to lazily back-fill ActiveCompanyID on sessions
+// that were created before the multi-entity migration landed. This way an
+// ops rollout does not force every existing user to re-login. When the
+// session already carries a value, no DB query happens.
+func Auth(store *auth.Store, cookieName string, pool *pgxpool.Pool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			cookie, err := c.Cookie(cookieName)
@@ -104,10 +111,38 @@ func Auth(store *auth.Store, cookieName string) echo.MiddlewareFunc {
 				}
 				return echo.NewHTTPError(http.StatusInternalServerError, "session lookup failed")
 			}
+			if sess.ActiveCompanyID == 0 && pool != nil {
+				backfillActiveCompany(ctx, pool, store, sess)
+			}
 			_ = store.Touch(ctx, sess.ID)
 			c.SetRequest(c.Request().WithContext(auth.WithSession(ctx, sess)))
 			return next(c)
 		}
+	}
+}
+
+// backfillActiveCompany picks an active company for a session that predates
+// the multi-entity feature. Prefers users.default_company_id; falls back to
+// the first membership row so a user with NULL default but real memberships
+// is not left stuck. Best-effort — errors are swallowed so a transient DB
+// hiccup never blocks an authenticated request.
+func backfillActiveCompany(ctx context.Context, pool *pgxpool.Pool, store *auth.Store, sess *auth.Session) {
+	var cid int64
+	err := pool.QueryRow(ctx, `SELECT default_company_id FROM users WHERE id = $1`, sess.UserID).Scan(&cid)
+	if err == nil && cid > 0 {
+		sess.ActiveCompanyID = cid
+		_ = store.Put(ctx, sess)
+		return
+	}
+	// Fallback: first company this user belongs to, preferring is_default.
+	err = pool.QueryRow(ctx, `
+		SELECT company_id FROM user_companies
+		WHERE user_id = $1
+		ORDER BY is_default DESC, company_id
+		LIMIT 1`, sess.UserID).Scan(&cid)
+	if err == nil && cid > 0 {
+		sess.ActiveCompanyID = cid
+		_ = store.Put(ctx, sess)
 	}
 }
 

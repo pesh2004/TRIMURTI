@@ -26,6 +26,7 @@ import (
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/health"
 	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/hr"
 	meMod "github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/me"
+	"github.com/ama-bmgpesh/trimurti-erp/backend/internal/modules/settings"
 )
 
 type echoValidator struct{ v *validator.Validate }
@@ -136,9 +137,10 @@ func main() {
 	// Authenticated group. CSRF guards every mutation (GET/HEAD/OPTIONS pass
 	// through untouched); see middleware.CSRF for the double-submit pattern.
 	authed := api.Group("")
-	authed.Use(mw.Auth(sessions, cfg.CookieName))
+	authed.Use(mw.Auth(sessions, cfg.CookieName, pool))
 	authed.Use(mw.CSRF())
 	authed.GET("/auth/me", authHandler.Me)
+	authed.POST("/auth/switch-company", authHandler.SwitchCompany)
 
 	// --- /me/* — self-service endpoints (PDPA data export lives here) ---
 	meHandler := meMod.New(pool, auditWriter, cfg.PIIEncryptionKey)
@@ -165,7 +167,17 @@ func main() {
 	authed.PATCH("/hr/employees/:id", hrEmp.Update, mw.RequirePermission("hr_employees.write"), rlEmpWrite)
 	authed.POST("/hr/employees/:id/terminate", hrEmp.Terminate, mw.RequirePermission("hr_employees.terminate"), rlEmpTerm)
 
-	// TODO Phase 1 additions: dashboard, settings, gov_rbac, audit, approval.
+	// --- Settings (company profile + integrations status) ---
+	// Write endpoint rate-limited per user because bulk company-profile
+	// churn isn't a legitimate workflow and a runaway form would otherwise
+	// spam audit rows.
+	settingsH := settings.New(pool, auditWriter, cfg)
+	rlSettingsWrite := mw.RateLimitByUser(rdb, "settings_write", 30, time.Hour)
+	authed.GET("/settings/company", settingsH.GetCompany, mw.RequirePermission("settings.read"))
+	authed.PUT("/settings/company", settingsH.UpdateCompany, mw.RequirePermission("settings.write"), rlSettingsWrite)
+	authed.GET("/settings/integrations", settingsH.GetIntegrations, mw.RequirePermission("settings.read"))
+
+	// TODO Phase 1 additions: dashboard, gov_rbac, audit, approval.
 
 	// ---- Server ----
 	srv := &http.Server{

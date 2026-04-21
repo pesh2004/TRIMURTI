@@ -43,13 +43,23 @@ type loginRequest struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 
+type companyLite struct {
+	ID        int64  `json:"id"`
+	Code      string `json:"code"`
+	NameTH    string `json:"name_th"`
+	NameEN    string `json:"name_en"`
+	IsDefault bool   `json:"is_default"`
+}
+
 type meResponse struct {
-	ID          int64    `json:"id"`
-	Email       string   `json:"email"`
-	Username    string   `json:"username"`
-	DisplayName string   `json:"display_name"`
-	Roles       []string `json:"roles"`
-	Permissions []string `json:"permissions"`
+	ID              int64         `json:"id"`
+	Email           string        `json:"email"`
+	Username        string        `json:"username"`
+	DisplayName     string        `json:"display_name"`
+	Roles           []string      `json:"roles"`
+	Permissions     []string      `json:"permissions"`
+	Companies       []companyLite `json:"companies"`
+	ActiveCompanyID int64         `json:"active_company_id"`
 }
 
 func (h *Handler) Login(c echo.Context) error {
@@ -65,18 +75,19 @@ func (h *Handler) Login(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	var (
-		userID       int64
-		passwordHash string
-		displayName  string
-		username     string
-		isActive     bool
-		lockedUntil  *time.Time
-		failedLogins int
+		userID           int64
+		passwordHash     string
+		displayName      string
+		username         string
+		isActive         bool
+		lockedUntil      *time.Time
+		failedLogins     int
+		defaultCompanyID *int64
 	)
 	err := h.pool.QueryRow(ctx, `
-		SELECT id, password_hash, display_name, username, is_active, locked_until, failed_login_attempts
+		SELECT id, password_hash, display_name, username, is_active, locked_until, failed_login_attempts, default_company_id
 		FROM users WHERE email = $1`, req.Email).
-		Scan(&userID, &passwordHash, &displayName, &username, &isActive, &lockedUntil, &failedLogins)
+		Scan(&userID, &passwordHash, &displayName, &username, &isActive, &lockedUntil, &failedLogins, &defaultCompanyID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Constant-time-ish response to avoid email enumeration.
@@ -112,14 +123,30 @@ func (h *Handler) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "permission lookup failed")
 	}
 
+	// Resolve the session's active company. users.default_company_id is
+	// the preferred source; if NULL (migration transition edge case),
+	// fall back to the first membership row.
+	activeCompanyID := int64(0)
+	if defaultCompanyID != nil {
+		activeCompanyID = *defaultCompanyID
+	}
+	if activeCompanyID == 0 {
+		_ = h.pool.QueryRow(ctx, `
+			SELECT company_id FROM user_companies
+			WHERE user_id = $1
+			ORDER BY is_default DESC, company_id
+			LIMIT 1`, userID).Scan(&activeCompanyID)
+	}
+
 	sess := auth.Session{
-		UserID:      userID,
-		Email:       req.Email,
-		DisplayName: displayName,
-		Roles:       roles,
-		Permissions: perms,
-		IP:          c.RealIP(),
-		UserAgent:   c.Request().UserAgent(),
+		UserID:          userID,
+		Email:           req.Email,
+		DisplayName:     displayName,
+		Roles:           roles,
+		Permissions:     perms,
+		IP:              c.RealIP(),
+		UserAgent:       c.Request().UserAgent(),
+		ActiveCompanyID: activeCompanyID,
 	}
 	sid, err := h.sessions.Create(ctx, sess)
 	if err != nil {
@@ -153,9 +180,16 @@ func (h *Handler) Login(c echo.Context) error {
 		After:     map[string]any{"user_id": userID, "email": req.Email},
 	})
 
+	companies, err := loadCompanies(ctx, h.pool, userID)
+	if err != nil {
+		// Login itself succeeded; log but don't fail the response — the
+		// switcher simply won't render until the user refreshes.
+		companies = []companyLite{}
+	}
 	return c.JSON(http.StatusOK, meResponse{
 		ID: userID, Email: req.Email, Username: username, DisplayName: displayName,
 		Roles: roles, Permissions: perms,
+		Companies: companies, ActiveCompanyID: activeCompanyID,
 	})
 }
 
@@ -179,25 +213,83 @@ func (h *Handler) Logout(c echo.Context) error {
 }
 
 func (h *Handler) Me(c echo.Context) error {
-	sess := auth.FromContext(c.Request().Context())
+	ctx := c.Request().Context()
+	sess := auth.FromContext(ctx)
 	if sess == nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
 	}
 	var username string
-	if err := h.pool.QueryRow(c.Request().Context(), `SELECT username FROM users WHERE id = $1`, sess.UserID).Scan(&username); err != nil {
+	if err := h.pool.QueryRow(ctx, `SELECT username FROM users WHERE id = $1`, sess.UserID).Scan(&username); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "user lookup failed")
+	}
+	companies, err := loadCompanies(ctx, h.pool, sess.UserID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "company lookup failed")
 	}
 	// Upgrade path for sessions that pre-date Session-4: if the user is
 	// authenticated but the CSRF cookie is absent, mint one now. Idempotent.
 	mw.IssueCSRFCookieIfMissing(c, h.cookieDomain, h.cookieSecure)
 	return c.JSON(http.StatusOK, meResponse{
-		ID:          sess.UserID,
-		Email:       sess.Email,
-		Username:    username,
-		DisplayName: sess.DisplayName,
-		Roles:       sess.Roles,
-		Permissions: sess.Permissions,
+		ID:              sess.UserID,
+		Email:           sess.Email,
+		Username:        username,
+		DisplayName:     sess.DisplayName,
+		Roles:           sess.Roles,
+		Permissions:     sess.Permissions,
+		Companies:       companies,
+		ActiveCompanyID: sess.ActiveCompanyID,
 	})
+}
+
+type switchCompanyRequest struct {
+	CompanyID int64 `json:"company_id"`
+}
+
+// SwitchCompany moves the session's active company to a different one the
+// user belongs to. Rejects targets the user is not a member of so a
+// compromised cookie cannot scope to arbitrary companies. Audited either
+// way so the trail shows who was where when.
+func (h *Handler) SwitchCompany(c echo.Context) error {
+	ctx := c.Request().Context()
+	sess := auth.FromContext(ctx)
+	if sess == nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "not authenticated")
+	}
+	var req switchCompanyRequest
+	if err := c.Bind(&req); err != nil || req.CompanyID <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "company_id required")
+	}
+	if req.CompanyID == sess.ActiveCompanyID {
+		// No-op — re-render the current state so the client stays in sync.
+		return h.Me(c)
+	}
+
+	var allowed bool
+	if err := h.pool.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM user_companies WHERE user_id=$1 AND company_id=$2)`,
+		sess.UserID, req.CompanyID).Scan(&allowed); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "membership lookup failed")
+	}
+	if !allowed {
+		return echo.NewHTTPError(http.StatusForbidden, "not a member of that company")
+	}
+
+	before := sess.ActiveCompanyID
+	sess.ActiveCompanyID = req.CompanyID
+	if err := h.sessions.Put(ctx, sess); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "could not update session")
+	}
+
+	_ = h.audit.Write(ctx, audit.Entry{
+		IP: c.RealIP(), UserAgent: c.Request().UserAgent(),
+		Action:   "auth.switch_company",
+		Entity:   "session",
+		EntityID: sess.ID,
+		Before:   map[string]any{"active_company_id": before},
+		After:    map[string]any{"active_company_id": req.CompanyID},
+	})
+
+	return h.Me(c)
 }
 
 func loadRoles(ctx context.Context, pool *pgxpool.Pool, userID int64) ([]string, error) {
@@ -217,6 +309,32 @@ func loadRoles(ctx context.Context, pool *pgxpool.Pool, userID int64) ([]string,
 			return nil, err
 		}
 		out = append(out, code)
+	}
+	return out, rows.Err()
+}
+
+// loadCompanies returns every company the user belongs to, flagging the
+// row marked as default. The result is always non-nil so the JSON encoder
+// emits `[]` rather than `null` for users with no memberships (which
+// shouldn't happen post-migration, but defence in depth costs nothing).
+func loadCompanies(ctx context.Context, pool *pgxpool.Pool, userID int64) ([]companyLite, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT c.id, c.code, c.name_th, c.name_en, uc.is_default
+		FROM user_companies uc
+		JOIN companies c ON c.id = uc.company_id
+		WHERE uc.user_id = $1 AND c.is_active
+		ORDER BY uc.is_default DESC, c.name_en`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []companyLite{}
+	for rows.Next() {
+		var cl companyLite
+		if err := rows.Scan(&cl.ID, &cl.Code, &cl.NameTH, &cl.NameEN, &cl.IsDefault); err != nil {
+			return nil, err
+		}
+		out = append(out, cl)
 	}
 	return out, rows.Err()
 }
