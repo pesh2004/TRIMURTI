@@ -5,6 +5,7 @@ import { Icons } from '@/components/hr/icons'
 import { useAuth } from '@/lib/auth'
 import { applyTheme, initialTheme, type Theme } from '@/lib/theme'
 import { setLanguage, type Lang } from '@/lib/i18n'
+import { CompanySwitcher } from './company-switcher'
 
 export function Topbar() {
   const { t, i18n } = useTranslation()
@@ -42,6 +43,7 @@ export function Topbar() {
           <span className="role-dot" />
           <span style={{ fontWeight: 500 }}>{user?.roles[0] ?? '—'}</span>
         </div>
+        <CompanySwitcher />
         <button
           className="theme-btn"
           onClick={() => setTheme((v) => (v === 'dark' ? 'light' : 'dark'))}

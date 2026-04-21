@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, ApiError } from './api'
 
+export type CompanyLite = {
+  id: number
+  code: string
+  name_th: string
+  name_en: string
+  is_default: boolean
+}
+
 export type User = {
   id: number
   email: string
@@ -8,6 +16,8 @@ export type User = {
   display_name: string
   roles: string[]
   permissions: string[]
+  companies: CompanyLite[]
+  active_company_id: number
 }
 
 type AuthState = {

@@ -134,5 +134,62 @@
     "status_inactive": "Inactive",
     "status_terminated": "Terminated",
     "status_on_leave": "On Leave"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Company profile, integrations, and per-entity business rules.",
+    "tabs": {
+      "company": "Company",
+      "integrations": "Integrations"
+    },
+    "company": {
+      "section_identity": "Identity",
+      "section_contact": "Contact",
+      "section_financial": "Financial",
+      "code": "Code",
+      "nameTh": "Name (Thai)",
+      "nameEn": "Name (English)",
+      "taxId": "Tax ID",
+      "taxIdHint": "13-digit Thai tax ID (Luhn checksum).",
+      "phone": "Phone",
+      "email": "Email",
+      "website": "Website",
+      "address": "Address",
+      "addressHint": "One line per row.",
+      "currency": "Currency",
+      "timezone": "Timezone",
+      "fiscalYearStart": "Fiscal year start month",
+      "vatRate": "VAT rate (%)",
+      "whtRate": "WHT rate (%)",
+      "save": "Save changes",
+      "saved": "Company profile saved.",
+      "errInvalidTaxId": "Invalid Thai tax ID (13 digits with valid checksum).",
+      "errInvalidRate": "Rate must be between 0 and 100.",
+      "errNameRequired": "Name cannot be empty.",
+      "errGeneric": "Could not save — {{msg}}",
+      "months": {
+        "1": "January", "2": "February", "3": "March", "4": "April",
+        "5": "May", "6": "June", "7": "July", "8": "August",
+        "9": "September", "10": "October", "11": "November", "12": "December"
+      }
+    },
+    "integrations": {
+      "service": "Service",
+      "status": "Status",
+      "details": "Details",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "smtp": "Email (SMTP)",
+      "storage": "File storage",
+      "payment": "Payment gateway",
+      "eTax": "e-Tax (RD)",
+      "smtpDetails": "{{host}}:{{port}} · from {{from}}",
+      "smtpNotConfigured": "Falls back to console logging (dev)."
+    },
+    "switcher": {
+      "label": "Active company",
+      "switching": "Switching…",
+      "switched": "Switched to {{name}}."
+    }
   }
 }
