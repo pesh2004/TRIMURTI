@@ -164,26 +164,53 @@ docker compose -f deploy/docker-compose.prod.yml --env-file .env \
   logs --tail 100 caddy | grep -iE 'certificate|renew'
 ```
 
-Force a renewal (useful to confirm the renewal path works before you
-depend on it):
+Force a renewal — **use Let's Encrypt staging first** so production quota
+(5 certs / domain / 7 days) isn't burned. The drill below proves the ACME
+path end-to-end, then reverts back to a fresh production cert.
 
 ```bash
-# Invalidate Caddy's cached cert and let it re-request
+# 1. Baseline: record current issuer + serial (you want these to change)
+echo | openssl s_client -connect "$DOMAIN":443 -servername "$DOMAIN" 2>/dev/null \
+  | openssl x509 -noout -dates -serial -issuer
+
+# 2. Enable Let's Encrypt STAGING in deploy/Caddyfile (uncomment the acme_ca line
+#    in the global {} block) — sed can do it inline:
+sed -i 's|^    # acme_ca https|    acme_ca https|' deploy/Caddyfile
+
+# 3. Invalidate cached cert + restart Caddy. `caddy reload` is insufficient —
+#    the process keeps the old cert in memory across a soft reload, so the
+#    ACME flow never re-runs. Full container restart is required.
 docker compose -f deploy/docker-compose.prod.yml --env-file .env \
-  exec caddy rm -rf /data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$DOMAIN
+  exec -T caddy sh -c 'rm -rf /data/caddy/certificates/*/'"$DOMAIN"'*'
 docker compose -f deploy/docker-compose.prod.yml --env-file .env \
   restart caddy
+sleep 20
 
-# Watch it happen
+# 4. Confirm staging cert landed — issuer should contain "(STAGING)"
+echo | openssl s_client -connect "$DOMAIN":443 -servername "$DOMAIN" 2>/dev/null \
+  | openssl x509 -noout -dates -serial -issuer
+
+# 5. Revert: re-comment acme_ca + invalidate staging cert + restart
+sed -i 's|^    acme_ca https|    # acme_ca https|' deploy/Caddyfile
 docker compose -f deploy/docker-compose.prod.yml --env-file .env \
-  logs -f caddy
+  exec -T caddy sh -c 'rm -rf /data/caddy/certificates/*/'"$DOMAIN"'*'
+docker compose -f deploy/docker-compose.prod.yml --env-file .env \
+  restart caddy
+sleep 25
+
+# 6. Confirm back on production cert (issuer E5/E7/E8/R10/R11 — no STAGING)
+echo | openssl s_client -connect "$DOMAIN":443 -servername "$DOMAIN" 2>/dev/null \
+  | openssl x509 -noout -dates -serial -issuer
+curl -sI "https://$DOMAIN/healthz" | head -1    # HTTP/2 200
 ```
 
-Expected log lines during renewal:
+Expected log lines during a successful issuance (staging or prod):
 ```
-certificate obtained successfully  
-...  
-finished handling certificate issuance
+obtaining certificate
+new ACME account registered          (first-ever run against this CA)
+trying to solve challenge
+validations succeeded; finalizing order
+certificate obtained successfully
 ```
 
 Record successful renewals in this file's [TLS renewal log](#tls-renewal-log)
@@ -251,7 +278,7 @@ prove renewal still works.
 
 | Date (UTC) | Cert valid until | Triggered by | Notes |
 |---|---|---|---|
-| _TBD_ | _TBD_ | _TBD_ | Run the force-renewal recipe above at least once before relying on automatic renewal. |
+| 2026-04-21 04:06 | 2026-07-20 03:10:29 UTC | pesh2004 — force-renewal drill (staging → revert to prod) | Full ACME path proven. Stage 1: enabled `acme_ca` staging + restart caddy → issuer `(STAGING) Mysterious Mulberry E8`, serial `2C28888A…`. Stage 2: commented out `acme_ca` + restart → new prod cert issued, issuer `Let's Encrypt E8`, serial `05BF369C…`. Replaced old prod cert (serial `06295EEA…`, issuer `E7`, valid until 2026-07-17). `/healthz` returned HTTP/2 200 post-drill. Used `docker compose restart caddy` — `caddy reload` alone is insufficient because in-memory cert survives soft reload. |
 
 ---
 

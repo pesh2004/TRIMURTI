@@ -175,7 +175,7 @@ the deployment safe. **No real data until every item below is `[x]`**
 - [x] PDPA self-service export: `GET /api/v1/me/export` returns the user row + employee record (PII decrypted since the caller is the data subject) + last 1000 audit_log entries authored by the user. "Download my data" button on the dashboard triggers the save. Every export writes an `me.data_export` audit row.
 - [x] `deploy/OPS.md` runbook — log access recipes, audit-trail spelunking SQL, health/TLS verification, common tasks, troubleshooting matrix, plus empty test-log tables for TLS renewal and uptime-alert drills.
 - [x] Uptime monitor wired (UptimeRobot) with email alert on `/healthz` fail — drill signed in `deploy/OPS.md#uptimerobot-test-log` on 2026-04-21 (stop Redis → DOWN email ≈1 min later; UP email at 03:54 UTC after restart). Free-tier HEAD probe works because `/healthz` now accepts both GET + HEAD (commit f4a3dd9).
-- [ ] TLS cert renewal force-tested — **operator task, recipe documented in `deploy/OPS.md#tls-certificate-renewal`**; log table waits for the first recorded renewal. Caddy's automatic path has been running since Phase 0; this item is about *proving* it still works before the first cert rotation expires.
+- [x] TLS cert renewal force-tested — drill signed in `deploy/OPS.md#tls-renewal-log` on 2026-04-21. Pattern: staging issuer first (proves ACME path without burning prod quota), then revert to a fresh prod cert. Confirmed `docker compose restart caddy` is required — `caddy reload` keeps the old cert in memory and never re-issues. New prod cert valid until 2026-07-20.
 
 ---
 
