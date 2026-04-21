@@ -21,10 +21,27 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ## Phase 1 — Core workspace (6 modules)
 
-Foundation before any money or paperwork flows.
+Foundation before any money or paperwork flows. Row-level multi-entity is
+now live — new modules scope per-company queries by calling
+`auth.ActiveCompanyFromContext(ctx)` and writing `company_id` on every
+row they own.
 
 - [ ] `dashboard` · Enterprise overview (5 sub-pages: Overview, Projects, Financial, Sales pipeline, HSE)
-- [ ] `settings` · Company/users/integrations config
+- [x] `settings` · Company profile + integrations + row-level multi-entity foundation
+  - [x] Migration 0006 — companies extended (currency, timezone, fiscal_year, VAT/WHT, website), `user_companies` join, `users.default_company_id`
+  - [x] Seeder reordered to upsert the company before the admin user; admin now seeded into `user_companies` with `is_default=TRUE`
+  - [x] Session carries `ActiveCompanyID`; Auth middleware lazy-populates pre-migration sessions so nobody gets kicked out
+  - [x] `POST /auth/switch-company` with membership check + audit row (`auth.switch_company`)
+  - [x] `/auth/me` now returns `companies[]` + `active_company_id`
+  - [x] `GET/PUT /settings/company` with permission gate + audit diff + per-user rate limit on write
+  - [x] `GET /settings/integrations` (env-driven, read-only, no secrets)
+  - [x] Frontend: Tabs primitive, CompanyProfileForm, IntegrationsTable, CompanySwitcher in topbar (hidden when memberships == 1)
+  - [x] Tests: backend unit (validate + company_test) + frontend Vitest (Tabs + CompanySwitcher) + Playwright E2E `frontend/e2e/settings.spec.ts`
+  - [x] README at `backend/internal/modules/settings/README.md`
+  - [x] Features catalog entry `platform.settings_company`
+  - [ ] `gov_rbac` users-per-company admin UI — deferred to the next Phase 1 module
+  - [ ] `CompanyScope` middleware for automatic query filtering — deferred until the second module opts into row-level scoping
+- [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
 - [x] `hr_employees` · Employee master — list/form/drawer + pgcrypto field-level encryption (migration 0003) for national_id & salary
   - [x] Migration 0002 (schema) + 0003 (pgcrypto field-level encryption) applied cleanly
   - [x] Backend handlers: list / get / create / update / terminate with PII masking + reveal_pii permission

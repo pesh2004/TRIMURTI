@@ -190,6 +190,43 @@ func main() {
 		}
 	}
 
+	// ---- HR master: company / departments / positions ----
+	// Runs before the admin user so `default_company_id` can be set on the
+	// initial insert. Upserts so the seed remains idempotent. Migrations
+	// 0002+ (and 0006 for default_company_id / user_companies) must be
+	// applied first.
+	var companyID int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO companies (code, name_th, name_en, tax_id, phone, email)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en
+		RETURNING id`,
+		defaultCompany.Code, defaultCompany.NameTH, defaultCompany.NameEN,
+		defaultCompany.TaxID, defaultCompany.Phone, defaultCompany.Email).Scan(&companyID)
+	if err != nil {
+		die(fmt.Errorf("upsert company: %w", err))
+	}
+
+	for _, d := range defaultDepartments {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO departments (company_id, code, name_th, name_en)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (company_id, code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en`,
+			companyID, d.Code, d.NameTH, d.NameEN); err != nil {
+			die(fmt.Errorf("upsert department %s: %w", d.Code, err))
+		}
+	}
+
+	for _, p := range defaultPositions {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO positions (code, name_th, name_en, level)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en, level = EXCLUDED.level`,
+			p.Code, p.NameTH, p.NameEN, p.Level); err != nil {
+			die(fmt.Errorf("upsert position %s: %w", p.Code, err))
+		}
+	}
+
 	// ---- admin user ----
 	email := strings.ToLower(strings.TrimSpace(os.Getenv("SEED_ADMIN_EMAIL")))
 	if email == "" {
@@ -224,26 +261,33 @@ func main() {
 	// Build the UPSERT conditionally: update password_hash only when the caller
 	// explicitly provided a password. Otherwise keep the existing hash so a
 	// no-op seed run never resets credentials by accident.
+	//
+	// default_company_id is set on insert; on conflict we only fill it when
+	// NULL so a user who has already chosen a different default is not
+	// stomped on re-seed.
 	upsertSQL := `
-		INSERT INTO users (email, username, password_hash, display_name, display_name_th)
-		VALUES ($1,$2,$3,$4,$5)
-		ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name
+		INSERT INTO users (email, username, password_hash, display_name, display_name_th, default_company_id)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (email) DO UPDATE SET
+			display_name       = EXCLUDED.display_name,
+			default_company_id = COALESCE(users.default_company_id, EXCLUDED.default_company_id)
 		RETURNING id`
 	if explicitPassword != "" {
 		upsertSQL = `
-			INSERT INTO users (email, username, password_hash, display_name, display_name_th)
-			VALUES ($1,$2,$3,$4,$5)
+			INSERT INTO users (email, username, password_hash, display_name, display_name_th, default_company_id)
+			VALUES ($1,$2,$3,$4,$5,$6)
 			ON CONFLICT (email) DO UPDATE SET
-				display_name  = EXCLUDED.display_name,
-				password_hash = EXCLUDED.password_hash,
+				display_name        = EXCLUDED.display_name,
+				password_hash       = EXCLUDED.password_hash,
 				password_changed_at = NOW(),
 				failed_login_attempts = 0,
-				locked_until = NULL
+				locked_until        = NULL,
+				default_company_id  = COALESCE(users.default_company_id, EXCLUDED.default_company_id)
 			RETURNING id`
 	}
 
 	var userID int64
-	if err := tx.QueryRow(ctx, upsertSQL, email, "admin", hash, "Administrator", "ผู้ดูแลระบบ").Scan(&userID); err != nil {
+	if err := tx.QueryRow(ctx, upsertSQL, email, "admin", hash, "Administrator", "ผู้ดูแลระบบ", companyID).Scan(&userID); err != nil {
 		die(fmt.Errorf("upsert admin: %w", err))
 	}
 
@@ -261,38 +305,18 @@ func main() {
 		die(fmt.Errorf("assign ADMIN: %w", err))
 	}
 
-	// ---- HR master: company / departments / positions ----
-	// Upserts so the seed remains idempotent. Migrations 0002+ must be applied first.
-	var companyID int64
-	err = tx.QueryRow(ctx, `
-		INSERT INTO companies (code, name_th, name_en, tax_id, phone, email)
-		VALUES ($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en
-		RETURNING id`,
-		defaultCompany.Code, defaultCompany.NameTH, defaultCompany.NameEN,
-		defaultCompany.TaxID, defaultCompany.Phone, defaultCompany.Email).Scan(&companyID)
-	if err != nil {
-		die(fmt.Errorf("upsert company: %w", err))
-	}
-
-	for _, d := range defaultDepartments {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO departments (company_id, code, name_th, name_en)
-			VALUES ($1,$2,$3,$4)
-			ON CONFLICT (company_id, code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en`,
-			companyID, d.Code, d.NameTH, d.NameEN); err != nil {
-			die(fmt.Errorf("upsert department %s: %w", d.Code, err))
-		}
-	}
-
-	for _, p := range defaultPositions {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO positions (code, name_th, name_en, level)
-			VALUES ($1,$2,$3,$4)
-			ON CONFLICT (code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en, level = EXCLUDED.level`,
-			p.Code, p.NameTH, p.NameEN, p.Level); err != nil {
-			die(fmt.Errorf("upsert position %s: %w", p.Code, err))
-		}
+	// Admin is a member of the seeded company. On rerun we keep the row
+	// but do NOT stomp is_default — if the operator later added admin to
+	// a second company with is_default=TRUE there, forcing the original
+	// row back to TRUE would make two rows default at once and violate
+	// uq_user_companies_one_default. Membership is what we care about;
+	// the default flag is the user's choice thereafter.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_companies (user_id, company_id, is_default)
+		VALUES ($1, $2, TRUE)
+		ON CONFLICT (user_id, company_id) DO NOTHING`,
+		userID, companyID); err != nil {
+		die(fmt.Errorf("assign admin → company: %w", err))
 	}
 
 	if err := tx.Commit(ctx); err != nil {

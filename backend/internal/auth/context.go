@@ -19,6 +19,17 @@ func FromContext(ctx context.Context) *Session {
 	return s
 }
 
+// ActiveCompanyFromContext returns the active company id from the session,
+// or 0 when the request is anonymous. Handlers scoping data to the active
+// company should prefer this helper over reaching into the Session struct
+// so that a future middleware-level enforcement can intercept here.
+func ActiveCompanyFromContext(ctx context.Context) int64 {
+	if s := FromContext(ctx); s != nil {
+		return s.ActiveCompanyID
+	}
+	return 0
+}
+
 // HasPermission returns true when the session grants the given permission code.
 func (s *Session) HasPermission(code string) bool {
 	if s == nil {

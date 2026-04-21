@@ -248,6 +248,30 @@ export const features: Feature[] = [
       'Disaster recovery: spin up a fresh droplet, restore from Spaces, live again in minutes',
     ],
   },
+  {
+    id: 'platform.settings_company',
+    category: 'platform',
+    status: 'live',
+    since: 'Phase 1B',
+    title_th: 'ตั้งค่าบริษัท + รองรับหลายบริษัท (row-level)',
+    title_en: 'Company settings + multi-entity (row-level)',
+    summary_th:
+      'แก้ไขข้อมูลบริษัท (ชื่อ ไทย/อังกฤษ, เลขผู้เสียภาษี, ที่อยู่, VAT, WHT, ปีบัญชี, เขตเวลา, สกุลเงิน) จากหน้าเว็บ + สลับบริษัทที่ทำงานอยู่จาก topbar เมื่อผู้ใช้สังกัดหลายบริษัทในกลุ่ม',
+    summary_en:
+      'Edit company profile (TH/EN name, tax ID, address, VAT, WHT, fiscal year, timezone, currency) from the web UI, plus a per-user company switcher in the topbar for users who belong to more than one entity.',
+    highlights_th: [
+      'สลับบริษัทได้ทันที — session อัปเดต + TanStack cache ล้างอัตโนมัติ',
+      'ทุก edit เขียน audit (before/after JSON) พร้อม actor + IP',
+      'Integrations tab = read-only ดึงจาก env — secrets ไม่เผลอโผล่ใน UI',
+      'Row-level scoping: โมดูลใหม่แค่เรียก `auth.ActiveCompanyFromContext(ctx)` ก็ได้ filter ถูกบริษัทอัตโนมัติ',
+    ],
+    highlights_en: [
+      'Instant switch — session updates and every per-company query cache invalidates',
+      'Every edit writes an audit row (before/after JSON) with actor + IP',
+      'Integrations tab is read-only and env-sourced — secrets never surface in the UI',
+      'Row-level scoping: new modules get per-company filtering by calling `auth.ActiveCompanyFromContext(ctx)`',
+    ],
+  },
 
   // ---------- Roadmap ----------
   {

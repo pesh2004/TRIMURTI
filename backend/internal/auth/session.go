@@ -22,6 +22,13 @@ type Session struct {
 	UserAgent   string    `json:"user_agent"`
 	CreatedAt   time.Time `json:"created_at"`
 	LastSeenAt  time.Time `json:"last_seen_at"`
+
+	// ActiveCompanyID is the company the session is currently scoped to.
+	// Populated at login from users.default_company_id; topbar switcher
+	// rewrites it via POST /auth/switch-company. Sessions created before
+	// this field existed are lazily back-filled by the Auth middleware,
+	// so a deploy does not force re-login.
+	ActiveCompanyID int64 `json:"active_company_id"`
 }
 
 var ErrSessionNotFound = errors.New("auth: session not found")
@@ -88,4 +95,22 @@ func (s *Store) Touch(ctx context.Context, id string) error {
 
 func (s *Store) Revoke(ctx context.Context, id string) error {
 	return s.rdb.Del(ctx, s.key(id)).Err()
+}
+
+// Put overwrites an existing session with the supplied payload and resets
+// the TTL. Used by the Auth middleware to persist a lazily back-filled
+// ActiveCompanyID, and by the switch-company handler to land a new active
+// company. Callers are expected to have fetched the session first via Get.
+func (s *Store) Put(ctx context.Context, sess *Session) error {
+	if sess == nil || sess.ID == "" {
+		return fmt.Errorf("put session: missing id")
+	}
+	data, err := json.Marshal(sess)
+	if err != nil {
+		return fmt.Errorf("marshalling session: %w", err)
+	}
+	if err := s.rdb.Set(ctx, s.key(sess.ID), data, s.ttl).Err(); err != nil {
+		return fmt.Errorf("writing session to redis: %w", err)
+	}
+	return nil
 }
