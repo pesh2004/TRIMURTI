@@ -28,12 +28,12 @@ type echoTestValidator struct{ v *validator.Validate }
 func (ev *echoTestValidator) Validate(i any) error { return ev.v.Struct(i) }
 
 type settingsFixture struct {
-	pool       *pgxpool.Pool
-	handler    *Handler
-	e          *echo.Echo
-	userID     int64
-	companyA   int64
-	companyB   int64
+	pool     *pgxpool.Pool
+	handler  *Handler
+	e        *echo.Echo
+	userID   int64
+	companyA int64
+	companyB int64
 }
 
 // setupSettingsFixture primes two companies, a throwaway user, and
@@ -180,12 +180,19 @@ func TestIntegration_UpdateCompany_RejectsInvalidTaxID(t *testing.T) {
 	// 13 digits but wrong checksum — typical Luhn-bypass attempt.
 	body := `{"tax_id": "1111111111111"}`
 	c, rec := f.ctxFor(f.companyA, http.MethodPut, "/api/v1/settings/company", body, "settings.write")
-	_ = f.handler.UpdateCompany(c)
-	if rec.Code != http.StatusBadRequest {
-		// handler returns an *echo.HTTPError, which Echo serialises to the
-		// recorder only when the handler's returned error bubbles up through
-		// the framework. Assert via the HTTPError we intercept.
+	err := f.handler.UpdateCompany(c)
+
+	// The handler returns an *echo.HTTPError, which isn't serialised to
+	// the recorder without Echo's error handler. Assert the HTTPError
+	// directly so the test doesn't depend on recorder state.
+	he, ok := err.(*echo.HTTPError)
+	if !ok {
+		t.Fatalf("expected *echo.HTTPError, got %T: %v (rec.Code=%d)", err, err, rec.Code)
 	}
+	if he.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d (%v)", he.Code, he.Message)
+	}
+
 	// Either way, the DB should be untouched.
 	var taxID *string
 	_ = f.pool.QueryRow(context.Background(), `SELECT tax_id FROM companies WHERE id=$1`, f.companyA).Scan(&taxID)

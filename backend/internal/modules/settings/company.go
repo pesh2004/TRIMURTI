@@ -187,7 +187,7 @@ func validatePatch(req *UpdateCompanyRequest) error {
 			return fmt.Errorf("website exceeds %d chars", maxWebsiteLen)
 		}
 		trimmed := strings.TrimSpace(*req.Website)
-		if trimmed != "" && !(strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://")) {
+		if trimmed != "" && !strings.HasPrefix(trimmed, "http://") && !strings.HasPrefix(trimmed, "https://") {
 			return errors.New("website must start with http:// or https://")
 		}
 	}

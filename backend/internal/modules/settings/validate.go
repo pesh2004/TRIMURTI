@@ -19,12 +19,12 @@ var allowedCurrencies = map[string]struct{}{
 // operates in. IANA database string — stored as-is so downstream code can
 // pass it straight into date-fns-tz / time.LoadLocation.
 var allowedTimezones = map[string]struct{}{
-	"Asia/Bangkok":    {},
-	"Asia/Singapore":  {},
-	"Asia/Tokyo":      {},
-	"Asia/Hong_Kong":  {},
+	"Asia/Bangkok":     {},
+	"Asia/Singapore":   {},
+	"Asia/Tokyo":       {},
+	"Asia/Hong_Kong":   {},
 	"Asia/Ho_Chi_Minh": {},
-	"UTC":             {},
+	"UTC":              {},
 }
 
 // ValidateCurrency rejects anything outside the allowlist to keep the
