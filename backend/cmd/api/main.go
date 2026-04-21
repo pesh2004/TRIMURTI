@@ -140,7 +140,11 @@ func main() {
 	authed.Use(mw.Auth(sessions, cfg.CookieName, pool))
 	authed.Use(mw.CSRF())
 	authed.GET("/auth/me", authHandler.Me)
-	authed.POST("/auth/switch-company", authHandler.SwitchCompany)
+	// Switch-company writes an audit row on every call, so per-user rate
+	// limit keeps a runaway client or a compromised session from spamming
+	// audit_log. 60/hour is comfortably above any legitimate human pattern.
+	rlSwitchCompany := mw.RateLimitByUser(rdb, "auth_switch_company", 60, time.Hour)
+	authed.POST("/auth/switch-company", authHandler.SwitchCompany, rlSwitchCompany)
 
 	// --- /me/* — self-service endpoints (PDPA data export lives here) ---
 	meHandler := meMod.New(pool, auditWriter, cfg.PIIEncryptionKey)

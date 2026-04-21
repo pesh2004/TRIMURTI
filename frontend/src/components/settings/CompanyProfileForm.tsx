@@ -151,6 +151,14 @@ export function CompanyProfileForm() {
     mut.mutate(patch)
   }
 
+  // maxLen mirrors the caps enforced server-side in
+  // backend/internal/modules/settings/company.go so the UI rejects
+  // over-length pastes before they ever round-trip.
+  const maxLen: Partial<Record<keyof FormState, number>> = {
+    name_th: 200, name_en: 200, tax_id: 30,
+    phone: 30, email: 200, website: 300,
+  }
+
   const field = (id: keyof FormState, label: string, type = 'text', hint?: string) => (
     <div style={{ display: 'grid', gap: 4 }}>
       <label htmlFor={id} className="t-xs" style={{ color: 'var(--text-muted)' }}>
@@ -164,6 +172,7 @@ export function CompanyProfileForm() {
         onChange={set(id)}
         disabled={!canWrite}
         className="inp"
+        maxLength={maxLen[id]}
         aria-invalid={!!errors[id]}
       />
       {hint ? <span className="t-xs t-muted">{hint}</span> : null}

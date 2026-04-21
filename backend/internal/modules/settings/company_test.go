@@ -5,6 +5,9 @@ import (
 	"testing"
 )
 
+// longString builds a padded input for length-cap assertions.
+func longString(n int) string { return strings.Repeat("a", n) }
+
 func TestBuildUpdateSet_EmptyPatchProducesNoSQL(t *testing.T) {
 	req := &UpdateCompanyRequest{}
 	set, args, err := buildUpdateSet(req)
@@ -81,6 +84,69 @@ func TestValidatePatch_NormalisesRatePrecision(t *testing.T) {
 	}
 	if *req.VatRate != "7.00" {
 		t.Errorf("expected vat_rate normalised to 7.00, got %q", *req.VatRate)
+	}
+}
+
+func TestValidatePatch_LengthCaps(t *testing.T) {
+	over := longString(maxNameLen + 1)
+	if err := validatePatch(&UpdateCompanyRequest{NameTH: &over}); err == nil {
+		t.Error("oversize name_th should be rejected")
+	}
+	overMail := longString(maxEmailLen + 1)
+	if err := validatePatch(&UpdateCompanyRequest{Email: &overMail}); err == nil {
+		t.Error("oversize email should be rejected")
+	}
+	overSite := longString(maxWebsiteLen + 1)
+	if err := validatePatch(&UpdateCompanyRequest{Website: &overSite}); err == nil {
+		t.Error("oversize website should be rejected")
+	}
+}
+
+func TestValidatePatch_EmailFormat(t *testing.T) {
+	bad := "not an email"
+	if err := validatePatch(&UpdateCompanyRequest{Email: &bad}); err == nil {
+		t.Error("garbage email should be rejected")
+	}
+	ok := "admin@trimurti.local"
+	if err := validatePatch(&UpdateCompanyRequest{Email: &ok}); err != nil {
+		t.Errorf("valid email rejected: %v", err)
+	}
+	empty := ""
+	if err := validatePatch(&UpdateCompanyRequest{Email: &empty}); err != nil {
+		t.Errorf("empty email (clear) should be accepted: %v", err)
+	}
+}
+
+func TestValidatePatch_WebsiteScheme(t *testing.T) {
+	bad := "javascript:alert(1)"
+	if err := validatePatch(&UpdateCompanyRequest{Website: &bad}); err == nil {
+		t.Error("non-http scheme should be rejected")
+	}
+	bad2 := "trimurti.example"
+	if err := validatePatch(&UpdateCompanyRequest{Website: &bad2}); err == nil {
+		t.Error("missing scheme should be rejected")
+	}
+	ok := "https://trimurti.example"
+	if err := validatePatch(&UpdateCompanyRequest{Website: &ok}); err != nil {
+		t.Errorf("https URL rejected: %v", err)
+	}
+}
+
+func TestValidatePatch_AddressLimits(t *testing.T) {
+	tooMany := Address{Lines: make([]string, maxAddressLines+1)}
+	for i := range tooMany.Lines {
+		tooMany.Lines[i] = "x"
+	}
+	if err := validatePatch(&UpdateCompanyRequest{Address: &tooMany}); err == nil {
+		t.Error("too many address lines should be rejected")
+	}
+	longLine := Address{Lines: []string{longString(maxAddressLine + 1)}}
+	if err := validatePatch(&UpdateCompanyRequest{Address: &longLine}); err == nil {
+		t.Error("oversize address line should be rejected")
+	}
+	ok := Address{Lines: []string{"123 Example Rd", "Bangkok 10500"}}
+	if err := validatePatch(&UpdateCompanyRequest{Address: &ok}); err != nil {
+		t.Errorf("normal address rejected: %v", err)
 	}
 }
 

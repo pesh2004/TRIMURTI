@@ -99,3 +99,12 @@ PR flips it to session-scoped.
 - Logo upload deferred until `internal/storage` exists.
 - Editable secrets stay in `.env` + `deploy/SECRETS.md`; the
   Integrations tab is read-only on purpose.
+- **Session staleness on revoked membership.** `session.ActiveCompanyID`
+  is cached in Redis for the duration of the session TTL. If an admin
+  revokes a user's membership (`DELETE FROM user_companies …`), the
+  user's in-flight session continues to serve that company until the
+  session expires or the user logs out and back in. Bounded by
+  `SESSION_TTL_MINUTES` (30 in dev, typically 60 in prod). A future
+  `CompanyScope` middleware should re-verify membership on each sensitive
+  request to close this. For now it's acceptable because revocation is
+  rare + membership changes are operator-initiated.

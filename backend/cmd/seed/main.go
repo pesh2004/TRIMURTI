@@ -305,13 +305,16 @@ func main() {
 		die(fmt.Errorf("assign ADMIN: %w", err))
 	}
 
-	// Admin is a member of the seeded company and it is their default. On
-	// rerun we force is_default back to TRUE for admin so an accidental
-	// toggle elsewhere doesn't orphan the switcher's initial state.
+	// Admin is a member of the seeded company. On rerun we keep the row
+	// but do NOT stomp is_default — if the operator later added admin to
+	// a second company with is_default=TRUE there, forcing the original
+	// row back to TRUE would make two rows default at once and violate
+	// uq_user_companies_one_default. Membership is what we care about;
+	// the default flag is the user's choice thereafter.
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_companies (user_id, company_id, is_default)
 		VALUES ($1, $2, TRUE)
-		ON CONFLICT (user_id, company_id) DO UPDATE SET is_default = TRUE`,
+		ON CONFLICT (user_id, company_id) DO NOTHING`,
 		userID, companyID); err != nil {
 		die(fmt.Errorf("assign admin → company: %w", err))
 	}

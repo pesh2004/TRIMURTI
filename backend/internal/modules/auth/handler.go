@@ -264,10 +264,16 @@ func (h *Handler) SwitchCompany(c echo.Context) error {
 		return h.Me(c)
 	}
 
+	// Require an active membership + an active target company. Joining
+	// companies lets us reject a switch to a company that was deactivated
+	// after the user joined it, in one round-trip.
 	var allowed bool
 	if err := h.pool.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM user_companies WHERE user_id=$1 AND company_id=$2)`,
-		sess.UserID, req.CompanyID).Scan(&allowed); err != nil {
+		SELECT EXISTS(
+		    SELECT 1 FROM user_companies uc
+		    JOIN companies c ON c.id = uc.company_id
+		    WHERE uc.user_id = $1 AND uc.company_id = $2 AND c.is_active
+		)`, sess.UserID, req.CompanyID).Scan(&allowed); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "membership lookup failed")
 	}
 	if !allowed {
